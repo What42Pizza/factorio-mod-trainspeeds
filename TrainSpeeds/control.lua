@@ -72,18 +72,41 @@ end
 
 
 
-function getTrainForce(train)
-	local trainSpeed    = getTrainSpeed(train);
+function getLocomotiveFuelForceMultiplier(train)
+	-- wood: 2M
+	-- coal: 4M
+	-- solid fuel: 12M
+	-- nuclear: 1210M
 
-	local pullingForce  = global.settings.locomotivePullforce * getLocomotiveCount(train);
-	local totalForce    = pullingForce;
+	local fuel_value = 0;
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			local burning_item = locomotive.burner.currently_burning
+			if burning_item ~= nil then
+				fuel_value = fuel_value + math.log(burning_item.fuel_value / 1000000) / math.log(10);
+			end
+		end
+	end
+	return fuel_value;
+end
+
+
+
+function getTrainForce(train)
+	local pullingForce = 0;
+	if global.settings.fuelTypeBasedAcceleration then
+		pullingForce = global.settings.locomotivePullforce * getLocomotiveFuelForceMultiplier(train);
+	else
+		pullingForce = global.settings.locomotivePullforce * getLocomotiveCount(train);
+	end
 	
+	local trainSpeed    = getTrainSpeed(train);
 	local vehicleCount  = getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train);
 	local wheelFriction = global.settings.trainWheelfrictionCoefficient * trainSpeed * vehicleCount;
 	local airFriction   = global.settings.trainAirfrictionCoefficient   * math_pow2(trainSpeed);
 	local totalFriction = wheelFriction + airFriction;
 
-	return math.max(0.0, totalForce - totalFriction);
+	return math.max(0.0, pullingForce - totalFriction);
 end
 
 
@@ -164,6 +187,7 @@ end
 
 function refresh_mod_settings()
 	global.settings = {
+		fuelTypeBasedAcceleration = settings.global["modtrainspeeds-fuel-type-based-acceleration"].value,
 		locomotivePullforce = settings.global["modtrainspeeds-locomotive-pullforce"].value,
 		locomotiveWeight = settings.global["modtrainspeeds-locomotive-weight"].value,
 		cargoWagonWeight = settings.global["modtrainspeeds-cargo-wagon-weight"].value,

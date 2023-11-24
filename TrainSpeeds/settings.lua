@@ -1,6 +1,14 @@
 data:extend
 {
 	{
+		type = "bool-setting",
+		name = "modtrainspeeds-fuel-type-based-acceleration",
+		order = "100",
+		setting_type = "runtime-global",
+		default_value = true
+	},
+	
+	{
 		type = "double-setting",
 		name = "modtrainspeeds-locomotive-pullforce",
 		order = "101",
