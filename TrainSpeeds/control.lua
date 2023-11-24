@@ -114,12 +114,12 @@ end
 
 function isTrainActuallyPoweredElectrically(train)
 	for direction, locomotives in pairs(train.locomotives) do
-		for idx, locomotive in ipairs(locomotives) do
+		for idx, locomotive in ipairs(locomotives) do		
 			if locomotive.prototype.name == 'bet-locomotive' then
 				return true
 			end
 			
-			if locomotive.prototype.name:find('ret-modular-locomotive') ~= 0 then
+			if locomotive.prototype.name:find('ret-modular-locomotive') ~= nil then
 				return true
 			end
 		end
@@ -163,7 +163,15 @@ function getTrainPullingForce(train)
 		local lowSpeedLimit = 33;
 		local lowSpeedBonus = math.max(0, lowSpeedLimit - absTrainSpeed) / lowSpeedLimit;
 		pullingForce = pullingForce * ((forceMultiplier - 1.0) + lowSpeedBonus);
-	end	
+	end
+	
+	if isTrainDebugLogged(train) then
+		if isTrainActuallyPoweredElectrically(train) then
+			game.print('train ELEC');
+		else
+			game.print('train FUEL');
+		end
+	end
 	
 	if global.settings.fuelTypeBasedAcceleration then
 		pullingForce = pullingForce * getLocomotiveFuelForceMultiplier(train);
@@ -199,7 +207,7 @@ end
 
 
 function isTrainDebugLogged(train)
-	return false -- train.id >= 1269
+	return false -- train.id == 1232
 end
 
 
@@ -258,7 +266,7 @@ function adjustTrainAccleration(train)
 	end
 	
 	if isTrainDebugLogged(train) then	
-		game.print('train ' .. x .. ' acceleration: change=' .. didChange .. ' -> '
+		game.print('train ' .. train.id .. ' acceleration: change=' .. didChange .. ' -> '
 		   .. string.format("%.2f", acceleration*GAME_FRAMERATE) .. '/'
 		   .. string.format("%.2f", maxAcceleration*GAME_FRAMERATE) .. '/'
 		   .. string.format("%.2f", origAcceleration*GAME_FRAMERATE)
@@ -268,6 +276,11 @@ function adjustTrainAccleration(train)
 	global.trainId2speed[train.id] = getTrainSpeed(train);
 end
 
+-- no air friction, no wheel friction, no acceleration-change
+-- stop 1: 63km/h, stop 2: 86km/h, stop 3: 103km/h
+
+-- WITH air friction, WITH wheel friction, WITH acceleration-change
+-- stop 1: 58km/h, stop 2: 79km/h, stop 3: 94km/h, stop 4: 104km/h
 
 
 function ensure_mod_context()
@@ -292,13 +305,24 @@ function refresh_mod_settings()
 	}
 end
 
+function needs_refresh_mod_settings()
+	return global.settings == nil
+		or global.settings.fuelTypeBasedAcceleration == nil
+		or global.settings.locomotivePullforce == nil
+		or global.settings.cargoStackWeight == nil
+		or global.settings.fluidLiterWeight == nil
+		or global.settings.trainAirfrictionCoefficient == nil
+		or global.settings.shipWaterfrictionCoefficient == nil
+		or global.settings.trainWheelfrictionCoefficient == nil
+end
+
 
 
 script.on_event({defines.events.on_tick},
 	function (e)
 		ensure_mod_context();
 		
-		if global.settings == nil or e.tick % GAME_FRAMERATE == 0 then
+		if needs_refresh_mod_settings() or e.tick % GAME_FRAMERATE == 0 then
 			refresh_mod_settings();
 		end
 		
