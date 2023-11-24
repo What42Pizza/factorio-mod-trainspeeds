@@ -5,7 +5,7 @@ require 'rivenmods-common-v0-1-1'
 
 function isTrainDebugLogged(train)
 	return false
-	-- return train.id == 31
+	-- return train.id == 454
 end
 
 
@@ -78,7 +78,16 @@ end
 function getTrainCargoStackUsage(train)
 	local train_stack_used = 0.0;
 	for itemName, amount in pairs(train.get_contents()) do
-		train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+		if game.active_mods['FreightForwarding'] then
+			local composition = getIntermodalContainerItemCompositionCached(itemName)			
+			if composition ~= nil then
+				train_stack_used = train_stack_used + amount * composition.amount / game.item_prototypes[composition.name].stack_size
+			else
+				train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size
+			end			
+		else
+			train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size
+		end
 	end
 	return train_stack_used;
 end
@@ -89,6 +98,39 @@ function getTrainFluidWagonUsage(train)
 		train_stack_used = train_stack_used + amount;
 	end
 	return train_stack_used;
+end
+
+
+
+
+
+function getIntermodalContainerItemComposition(itemName)
+	if string.sub(itemName, 1, 3) ~= 'ic-' then
+		return nil
+	end
+	
+	for recipeName, recipe in pairs(game.recipe_prototypes) do
+		if string.sub(recipeName, 1, 8) == 'ic-load-' then
+			if recipe.main_product ~= nil and recipe.main_product.name == itemName then
+				for idx, ingredient in pairs(recipe.ingredients) do
+					if ingredient.name ~= 'ic-container' then
+						return ingredient
+					end
+				end
+			end
+		end
+	end
+	
+	return nil
+end
+
+function getIntermodalContainerItemCompositionCached(itemName)
+	--if global.container2ingredient[itemName] ~= nil then
+	--	return global.container2ingredient[itemName]
+	--end
+	
+	global.container2ingredient[itemName] = getIntermodalContainerItemComposition(itemName)
+	return global.container2ingredient[itemName]
 end
 
 
@@ -111,7 +153,33 @@ function getTrainMass(train)
 	--game.print('cargo weight: ' .. getTrainCargoStackUsage(train));
 	--game.print('fluid weight: ' .. getTrainFluidWagonUsage(train));
 	
-	return total;
+	return total
+end
+
+
+
+function isTrainActuallyMini(train)
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			if locomotive.name == 'mini-locomotive' then
+				return true
+			end
+		end
+	end
+	
+	for idx, cargo_wagon in ipairs(train.cargo_wagons) do
+		if cargo_wagon.name == 'mini-cargo-wagon' then
+			return true
+		end
+	end
+	
+	for idx, fluid_wagon in ipairs(train.fluid_wagons) do
+		if fluid_wagon.name == 'mini-fluid-wagon' then
+			return true
+		end
+	end
+	
+	return false
 end
 
 
@@ -193,10 +261,10 @@ function getLocomotiveFuelForceMultiplier(locomotive)
 	local fuel_value = 0;
 	local burning_item = locomotive.burner.currently_burning
 	if burning_item ~= nil then
-		local burn_value = math.log(burning_item.fuel_value / 1000000) / math.log(10);
-		fuel_value = fuel_value + burn_value;
+		local burn_value = math.log(burning_item.fuel_value / 1000000) / math.log(10)
+		fuel_value = fuel_value + burn_value
 	end
-	return fuel_value;
+	return math.min(fuel_value, 4.00) -- to work around mods with insane fuel-values
 end
 
 
@@ -347,10 +415,11 @@ end
 
 function ensure_mod_context()
 	ensure_global_rndm()
-	ensure_global_mapping('trainId2train');
-	ensure_global_mapping('trainId2mass');
-	ensure_global_mapping('trainId2force');
-	ensure_global_mapping('trainId2speed');
+	ensure_global_mapping('trainId2train')
+	ensure_global_mapping('trainId2mass')
+	ensure_global_mapping('trainId2force')
+	ensure_global_mapping('trainId2speed')
+	ensure_global_mapping('container2ingredient')
 end
 
 
