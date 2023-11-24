@@ -1,4 +1,4 @@
-require 'rivenmods-common-v0-1-0'
+require 'rivenmods-common-v0-1-1'
 
 
 
@@ -152,66 +152,35 @@ end
 
 
 
-function ensure_mod_context() 
-	if not global.hasContext then
-		global.hasContext = true;
-		
-		global.trainId2train = {}
-		global.trainId2mass = {}
-		global.trainId2force = {}
-		global.trainId2speed = {}
-	end
-	
-	if not global.rndm then
-		global.rndm = game.create_random_generator()
-		global.rndm.re_seed(1337);
-	end
-	
-	if not global.settings then
-		refresh_mod_settings();
-	end
+function ensure_mod_context()
+	ensure_global_rndm()
+	ensure_global_mapping('trainId2train');
+	ensure_global_mapping('trainId2mass');
+	ensure_global_mapping('trainId2force');
+	ensure_global_mapping('trainId2speed');
 end
 
 
 
 function refresh_mod_settings()
-	game.print('trainspeeds.refresh_mod_settings');
-	global.settings = {}
-	global.settings.locomotivePullforce = settings.global["modtrainspeeds-locomotive-pullforce"].value;
-	global.settings.locomotiveWeight = settings.global["modtrainspeeds-locomotive-weight"].value;
-	global.settings.cargoWagonWeight = settings.global["modtrainspeeds-cargo-wagon-weight"].value;
-	global.settings.cargoPayloadWeight = settings.global["modtrainspeeds-cargo-payload-weight"].value;
-	global.settings.fluidWagonWeight = settings.global["modtrainspeeds-fluid-wagon-weight"].value;
-	global.settings.fluidPayloadWeight = settings.global["modtrainspeeds-fluid-payload-weight"].value;
-	global.settings.trainAirfrictionCoefficient = settings.global["modtrainspeeds-train-airfriction-coefficient"].value;
-	global.settings.trainWheelfrictionCoefficient = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value;
-	
-	game.print('trainspeeds.trainWheelfrictionCoefficient: ' .. global.settings.trainWheelfrictionCoefficient);
+	global.settings = {
+		locomotivePullforce = settings.global["modtrainspeeds-locomotive-pullforce"].value,
+		locomotiveWeight = settings.global["modtrainspeeds-locomotive-weight"].value,
+		cargoWagonWeight = settings.global["modtrainspeeds-cargo-wagon-weight"].value,
+		cargoPayloadWeight = settings.global["modtrainspeeds-cargo-payload-weight"].value,
+		fluidWagonWeight = settings.global["modtrainspeeds-fluid-wagon-weight"].value,
+		fluidPayloadWeight = settings.global["modtrainspeeds-fluid-payload-weight"].value,
+		trainAirfrictionCoefficient = settings.global["modtrainspeeds-train-airfriction-coefficient"].value,
+		trainWheelfrictionCoefficient = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value
+	}
 end
-
-
- 
-script.on_event({defines.events.on_init},
-	function (e) 
-		refresh_mod_settings();
-	end
-)
-script.on_event({defines.events.on_load},
-	function (e) 
-		refresh_mod_settings();
-	end
-)
-script.on_event({defines.events.on_runtime_mod_setting_changed},
-	function (e) 
-		refresh_mod_settings();
-	end
-)
 
 
 
 script.on_event({defines.events.on_tick},
 	function (e)
 		ensure_mod_context();
+		refresh_mod_settings();
 		
 		local discoveryInterval = 120;
 		local smokeInterval = 10;
