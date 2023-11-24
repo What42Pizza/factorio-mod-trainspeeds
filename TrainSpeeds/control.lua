@@ -102,7 +102,7 @@ function getTrainMass(train)
 	end
 	
 	for itemName, amount in pairs(train.get_contents()) do
-		total = total + amount * 20;
+		total = total + amount * 4;
 	end
 	
 	

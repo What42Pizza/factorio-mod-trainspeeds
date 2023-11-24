@@ -1,11 +1,11 @@
 {
     "name": "TrainSpeeds",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "title": "Rivens Realistic Train Acceleration",
     "author": "Riven",
     "contact": "",
     "homepage": "",
     "factorio_version": "1.1",
     "dependencies": ["base >= 1.1"],
-    "description": "This mod makes train acceleration a lot slower and depend on Cargo."
+    "description": "This mod makes train acceleration more realistic and depend on cargo."
 }
