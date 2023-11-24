@@ -1,77 +1,6 @@
-function shallowcopy(orig)
-    local orig_type = type(orig)
-    local copy
-    if orig_type == 'table' then
-        copy = {}
-        for orig_key, orig_value in pairs(orig) do
-            copy[orig_key] = orig_value
-        end
-    else -- number, string, boolean, etc
-        copy = orig
-    end
-    return copy
+function getTrainSpeed(train)
+	return train.speed * 60.0 * 3.6;
 end
-
-
-
-function deepcopy(orig)
-    local orig_type = type(orig)
-    local copy
-    if orig_type == 'table' then
-        copy = {}
-        for orig_key, orig_value in next, orig, nil do
-            copy[deepcopy(orig_key)] = deepcopy(orig_value)
-        end
-        setmetatable(copy, deepcopy(getmetatable(orig)))
-    else -- number, string, boolean, etc
-        copy = orig
-    end
-    return copy
-end
-
-function starts_with(str, start)
-   return str:sub(1, #start) == start
-end
-
-function ends_with(str, ending)
-   return ending == "" or str:sub(-#ending) == ending
-end
-
-function table_length(T)
-  local count = 0
-  for _ in pairs(T) do count = count + 1 end
-  return count
-end
-
-
-
-function deeptostring(orig)
-    local text
-	if orig == nil then
-		text = 'nil'
-	elseif type(orig) == 'string' then
-		text = '"' .. orig .. '"'
-	elseif type(orig) == 'table' then
-		text = ''
-        for orig_key, orig_value in next, orig, nil do
-            text = text .. deeptostring(orig_key) .. '=' .. deeptostring(orig_value) .. ','
-        end
-        -- text = '[' .. text .. deeptostring(getmetatable(orig)) .. ']'
-        text = '[' .. text .. ']'
-    else
-        text = tostring(orig)
-    end
-    return text
-end
-
-
-
-
-
-
-
-
-
 
 
 
@@ -86,6 +15,7 @@ function getLocomotiveCount(train)
 end
 
 
+
 function getCargoWagonCount(train)
 	local wagon_count = 0;
 	for idx, wagon in ipairs(train.cargo_wagons) do
@@ -93,6 +23,7 @@ function getCargoWagonCount(train)
 	end
 	return wagon_count;
 end
+
 
 
 function getCargoWagonUsageRatio(train)
@@ -115,6 +46,7 @@ function getFluidWagonCount(train)
 end
 
 
+
 function getFluidWagonUsageRatio(train)
 	local wagon_stack_count = 25000;	
 	local train_stack_used = 0.0;
@@ -126,30 +58,30 @@ end
 
 
 
-
-
-
-
-
-
-
-
-trainId2train = {}
-trainId2speed = {}
-trainId2mass = {}
-trainId2force = {}
-
 function findTrains()
-	trainId2train = {}
+	global.modtrainspeeds.trainId2train = {}
 	for _idx1_, surface in pairs(game.surfaces) do
 		for _idx2_, train in pairs(surface.get_trains()) do
-			trainId2train[train.id] = train
+			global.modtrainspeeds.trainId2train[train.id] = train;
+			global.modtrainspeeds.trainId2mass[train.id] = getTrainMass(train);
+			global.modtrainspeeds.trainId2force[train.id] = getTrainForce(train);
 		end
 	end
 end
 
-function getTrainSpeed(train)
-	return train.speed * 60.0 * 3.6;
+
+
+
+
+
+function ensure_mod_context() 
+	if not global.modtrainspeeds then
+		global.modtrainspeeds = {}
+		global.modtrainspeeds.trainId2train = {}
+		global.modtrainspeeds.trainId2mass = {}
+		global.modtrainspeeds.trainId2force = {}
+		global.modtrainspeeds.trainId2speed = {}
+	end
 end
 
 
@@ -171,31 +103,36 @@ end
 
 
 function getTrainForce(train)
-	local total = 0.0;
+	local trainSpeed = getTrainSpeed(train);
 	
-	total = total + getLocomotiveCount(train) * 2500.0;
+	local pullingForce = getLocomotiveCount(train) * 2500.0;
+	local totalForce = pullingForce;
 	
+	local wheelFriction = trainSpeed * 0.5 * (getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train));
+	local airFriction = trainSpeed * trainSpeed * 0.1;
+	local totalFriction = wheelFriction + airFriction;
 	
-	-- air friction impacts only first locomotive
-	total = total - 750.0;
+	if totalFriction > totalForce then
+		totalFriction = totalForce;
+	end
 	
-	return total;
+	return totalForce - totalFriction;
 end
 
 
 
 function adjustTrainAccleration(train)
 	local currSpeed = getTrainSpeed(train);
-	if not trainId2speed[train.id] then
-		trainId2speed[train.id] = currSpeed;
+	if not global.modtrainspeeds.trainId2speed[train.id] then
+		global.modtrainspeeds.trainId2speed[train.id] = currSpeed;
 		return
 	end
 	
-	local prevSpeed = trainId2speed[train.id];
+	local prevSpeed = global.modtrainspeeds.trainId2speed[train.id];
 	local acceleration = (currSpeed - prevSpeed) * 60.0;
 	local didChange = 0;
 	
-	local maxAcceleration = trainId2force[train.id] / trainId2mass[train.id];
+	local maxAcceleration = global.modtrainspeeds.trainId2force[train.id] / global.modtrainspeeds.trainId2mass[train.id];
 	
 	if currSpeed > 0.1 and acceleration > maxAcceleration then
 		acceleration = maxAcceleration;
@@ -211,28 +148,25 @@ function adjustTrainAccleration(train)
 		train.speed = currSpeed / 60.0 / 3.6;
 	end
 	
-	trainId2speed[train.id] = getTrainSpeed(train);
+	global.modtrainspeeds.trainId2speed[train.id] = getTrainSpeed(train);
 end
-
-
-firstTick = true;
 
 script.on_event({defines.events.on_tick},
 	function (e)
-		if (firstTick == true or e.tick % 120 == 0) then
-			firstTick = false
-			
+		ensure_mod_context();
+		
+		if (e.tick % 120 == 0) then
 			findTrains();
-			for trainId, train in pairs(trainId2train) do
+			for trainId, train in pairs(global.modtrainspeeds.trainId2train) do
 				if train.valid then
-					trainId2mass[trainId] = getTrainMass(train);
-					trainId2force[trainId] = getTrainForce(train);
+					global.modtrainspeeds.trainId2mass[trainId] = getTrainMass(train);
+					global.modtrainspeeds.trainId2force[trainId] = getTrainForce(train);
 				end
 			end
 		end
 		
 		if (e.tick % 10 == 0) then
-			for trainId, train in pairs(trainId2train) do
+			for trainId, train in pairs(global.modtrainspeeds.trainId2train) do
 				if train.valid then
 					for direction, locomotives in pairs(train.locomotives) do
 						for idx, locomotive in ipairs(locomotives) do
@@ -243,8 +177,8 @@ script.on_event({defines.events.on_tick},
 			end
 		end
 		
-		if trainId2train then
-			for trainId, train in pairs(trainId2train) do
+		if global.modtrainspeeds.trainId2train then
+			for trainId, train in pairs(global.modtrainspeeds.trainId2train) do
 				if train.valid then
 					adjustTrainAccleration(train);
 				end
