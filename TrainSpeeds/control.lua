@@ -67,8 +67,10 @@ function getTrainFuelStackUsage(train)
 	local train_stack_used = 0.0;
 	for direction, locomotives in pairs(train.locomotives) do
 		for idx, locomotive in ipairs(locomotives) do
-			for itemName, amount in pairs(locomotive.get_fuel_inventory().get_contents()) do
-				train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+			if locomotive.get_fuel_inventory() ~= nil then -- mod: space elevator
+				for itemName, amount in pairs(locomotive.get_fuel_inventory().get_contents()) do
+					train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+				end
 			end
 		end
 	end
@@ -135,6 +137,33 @@ function getIntermodalContainerItemCompositionCached(itemName)
 	global.container2ingredient[itemName] = getIntermodalContainerItemComposition(itemName)
 	return global.container2ingredient[itemName]
 end
+
+
+remote.add_interface("train-speeds", {
+	printTrainMass = function(trainId)
+			if global.trainId2train[trainId] == nil or global.trainId2train[trainId].valid == false then
+				game.print('Train #' .. trainId .. ' not found.')
+				return
+			end
+			
+			local train = global.trainId2train[trainId]
+			
+			local emptyWeight = getEmptyTrainWeight(train)
+			local fuelWeight  = getTrainFuelStackUsage(train)  * global.settings.cargoStackWeight
+			local cargoWeight = getTrainCargoStackUsage(train) * global.settings.cargoStackWeight
+			local fluidWeight = getTrainFluidWagonUsage(train) * global.settings.fluidLiterWeight
+			
+			local totalWeight = emptyWeight + fuelWeight + cargoWeight + fluidWeight
+			local totalWeightDisplay = tonumber(string.format("%.1f", totalWeight / 1000))
+		
+			game.print('Train #' .. trainId .. ' weighs ' .. totalWeightDisplay .. 'T ' ..
+					'(carriages: ' .. math.floor(emptyWeight) .. 'kg, ' .. --
+					' fuel: '      .. math.floor(fuelWeight)  .. 'kg, ' .. --
+					' cargo: '     .. math.floor(cargoWeight) .. 'kg, ' .. --
+					' fluid: '     .. math.floor(fluidWeight) .. 'kg)'
+					)
+	end
+})
 
 
 
