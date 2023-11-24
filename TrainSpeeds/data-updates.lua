@@ -10,9 +10,18 @@ local train_types = {
 	"cargo-wagon"
 }
 
+
+
 for _, train_type in ipairs(train_types) do
-	for _, item_prototype in pairs(data.raw[train_type]) do
-		item_prototype.weight = 10 * item_prototype.weight
+	for prototype_name, item_prototype in pairs(data.raw[train_type]) do
+		if  prototype_name ~= 'cargo_ship_engine'
+		and prototype_name ~= 'cargo_ship'
+		and prototype_name ~= 'boat_engine'
+		and prototype_name ~= 'oil_tanker'
+	 -- and prototype_name ~= 'boat'		
+		then
+			item_prototype.weight = 10 * item_prototype.weight
+		end
 	end
 end
 

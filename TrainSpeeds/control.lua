@@ -149,7 +149,41 @@ end
 
 
 
-function getLocomotiveFuelForceMultiplier(train)
+function getTrainForceMultiplier(train)
+	local multiplier = 0;
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			multiplier = multiplier + --
+				getLocomotiveEngineForceMultiplier(locomotive) * --
+				getLocomotiveFuelForceMultiplier(locomotive) * --
+				locomotive.get_health_ratio()
+		end
+	end
+	return multiplier;
+end
+
+
+
+function getLocomotiveEngineForceMultiplier(locomotive)
+	local protoname = locomotive.name
+	if protoname == 'locomotive' then
+		return 1.00
+	elseif protoname == 'bob-locomotive-2' then
+		return 1.50 -- mk2
+	elseif protoname == 'bob-locomotive-3' then
+		return 2.00 -- mk3
+	elseif protoname == 'bob-armoured-locomotive' then
+		return 1.25 -- mk1
+	elseif protoname == 'bob-armoured-locomotive-2' then
+		return 1.50 -- mk2
+	else
+		return 1.00
+	end
+end
+
+
+
+function getLocomotiveFuelForceMultiplier(locomotive)
 	-- wood: 2M            --> 0.30
 	-- coal: 4M            --> 0.60
 	-- solid fuel: 12M     --> 1.08
@@ -157,13 +191,10 @@ function getLocomotiveFuelForceMultiplier(train)
 	-- nuclear: 1210M      --> 3.08
 
 	local fuel_value = 0;
-	for direction, locomotives in pairs(train.locomotives) do
-		for idx, locomotive in ipairs(locomotives) do
-			local burning_item = locomotive.burner.currently_burning
-			if burning_item ~= nil then
-				fuel_value = fuel_value + math.log(burning_item.fuel_value / 1000000) / math.log(10);
-			end
-		end
+	local burning_item = locomotive.burner.currently_burning
+	if burning_item ~= nil then
+		local burn_value = math.log(burning_item.fuel_value / 1000000) / math.log(10);
+		fuel_value = fuel_value + burn_value;
 	end
 	return fuel_value;
 end
@@ -182,15 +213,19 @@ function getTrainPullingForce(train)
 		local lowSpeedLimit = 33;
 		local lowSpeedBonus = math.max(0, lowSpeedLimit - absTrainSpeed) / lowSpeedLimit;
 		pullingForce = pullingForce * ((forceMultiplier - 1.0) + lowSpeedBonus);
-	end
-	
-	if isTrainActuallyCargoShipInstead(train) then
+	elseif isTrainActuallyCargoShipInstead(train) then
 		local weight = getEmptyTrainWeight(train);
 		if weight < 500000 then
 			pullingForce = weight * 0.010
 		else
-			pullingForce = weight * 0.005
+			pullingForce = weight * 0.020
 		end
+	end
+	
+	if global.settings.fuelTypeBasedAcceleration then
+		pullingForce = pullingForce * getTrainForceMultiplier(train);
+	else
+		pullingForce = pullingForce * getLocomotiveCount(train);
 	end
 	
 	if isTrainDebugLogged(train) then
@@ -203,12 +238,6 @@ function getTrainPullingForce(train)
 				game.print('train FUEL');
 			end
 		end
-	end
-	
-	if global.settings.fuelTypeBasedAcceleration then
-		pullingForce = pullingForce * getLocomotiveFuelForceMultiplier(train);
-	else
-		pullingForce = pullingForce * getLocomotiveCount(train);
 	end
 	
 	return pullingForce
@@ -359,6 +388,7 @@ script.on_event({defines.events.on_tick},
 			refresh_mod_settings();
 		end
 		
+		
 		local trainDiscoveryInterval = 120;
 		local measureWeightInterval = 120;
 		local measureForceInterval = 30;
@@ -369,7 +399,7 @@ script.on_event({defines.events.on_tick},
 		end
 		
 		for trainId, train in pairs(global.trainId2train) do
-			if train.valid then
+			if train.valid then			
 				if (e.tick % measureWeightInterval == trainId % measureWeightInterval) then
 					global.trainId2mass[trainId]  = getTrainMass(train);
 				end
@@ -392,3 +422,7 @@ script.on_event({defines.events.on_tick},
 		end
 	end
 )
+
+
+
+
