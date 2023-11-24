@@ -3,60 +3,77 @@ require 'rivenmods-common-v0-1-1'
 
 
 
-
-
-
-function getCargoWagonCapacity()
-	return game.entity_prototypes['cargo-wagon'].get_inventory_size(defines.inventory.cargo_wagon);
+function isTrainDebugLogged(train)
+	return false
+	-- return train.id == 31
 end
-
-function getFluidWagonCapacity()
-	return game.entity_prototypes['fluid-wagon'].fluid_capacity;
-end
-
-
-
-function getLocomotiveWeight()
-	return game.entity_prototypes['locomotive'].weight;
-end
-
-function getCargoWagonWeight()
-	return game.entity_prototypes['cargo-wagon'].weight;
-end
-
-function getFluidWagonWeight()
-	return game.entity_prototypes['fluid-wagon'].weight;
-end
-
 
 
 function getLocomotiveCount(train)
-	local wagon_count = 0;
+	local count = 0
 	for direction, locomotives in pairs(train.locomotives) do
 		for idx, locomotive in ipairs(locomotives) do
-			wagon_count = wagon_count + 1;
+			count = count + 1
 		end
 	end
-	return wagon_count;
+	return count
 end
 
 function getCargoWagonCount(train)
-	local wagon_count = 0;
+	local count = 0
 	for idx, wagon in ipairs(train.cargo_wagons) do
-		wagon_count = wagon_count + 1;
+		count = count + 1
 	end
-	return wagon_count;
+	return count
 end
 
 function getFluidWagonCount(train)
-	local wagon_count = 0;
+	local count = 0
 	for idx, wagon in ipairs(train.fluid_wagons) do
-		wagon_count = wagon_count + 1;
+		count = count + 1
 	end
-	return wagon_count;
+	return count
 end
 
 
+
+
+
+
+
+function getEmptyTrainWeight(train)
+	local weight = 0
+	
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			weight = weight + game.entity_prototypes[locomotive.name].weight;
+		end
+	end
+	
+	for idx, wagon in ipairs(train.cargo_wagons) do
+		weight = weight + game.entity_prototypes[wagon.name].weight;
+	end
+
+	for idx, wagon in ipairs(train.fluid_wagons) do
+		weight = weight + game.entity_prototypes[wagon.name].weight;
+	end
+	
+	return weight
+end
+
+
+
+function getTrainFuelStackUsage(train)
+	local train_stack_used = 0.0;
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			for itemName, amount in pairs(locomotive.get_fuel_inventory().get_contents()) do
+				train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+			end
+		end
+	end
+	return train_stack_used;
+end
 
 function getTrainCargoStackUsage(train)
 	local train_stack_used = 0.0;
@@ -77,15 +94,16 @@ end
 
 
 function getTrainMass(train)
-	local emptyWeight = 0.0;
-	emptyWeight = emptyWeight + getLocomotiveCount(train) * getLocomotiveWeight();
-	emptyWeight = emptyWeight + getCargoWagonCount(train) * getCargoWagonWeight();
-	emptyWeight = emptyWeight + getFluidWagonCount(train) * getFluidWagonWeight();
+	local emptyWeight = getEmptyTrainWeight(train);
 	
 	local cargoWeight = 0.0;
+	cargoWeight = cargoWeight + getTrainFuelStackUsage(train)  * global.settings.cargoStackWeight; -- default 250: 3 stacks  --> 750 kg
 	cargoWeight = cargoWeight + getTrainCargoStackUsage(train) * global.settings.cargoStackWeight; -- default 250: 40 stacks  --> 10K kg
 	cargoWeight = cargoWeight + getTrainFluidWagonUsage(train) * global.settings.fluidLiterWeight; -- default 0.4: 25K liters --> 10K kg
 	
+	if isTrainDebugLogged(train) then
+		game.print('train weight: empty='  .. emptyWeight .. ', cargo=' .. cargoWeight);
+	end
 	
 	local total = emptyWeight + cargoWeight;	
 	--game.print('--- train id: ' .. train.id);
@@ -98,10 +116,11 @@ end
 
 
 
-function isTrainActuallyCargoShipInstead(train) 
+function isTrainActuallyCargoShipInstead(train)
 	for direction, locomotives in pairs(train.locomotives) do
 		for idx, locomotive in ipairs(locomotives) do
-			if locomotive.name == 'cargo_ship_engine' or locomotive.name == 'boat_engine' then
+			if locomotive.name == 'cargo_ship_engine'
+			or locomotive.name == 'boat_engine' then
 				return true
 			end
 		end
@@ -165,11 +184,24 @@ function getTrainPullingForce(train)
 		pullingForce = pullingForce * ((forceMultiplier - 1.0) + lowSpeedBonus);
 	end
 	
-	if isTrainDebugLogged(train) then
-		if isTrainActuallyPoweredElectrically(train) then
-			game.print('train ELEC');
+	if isTrainActuallyCargoShipInstead(train) then
+		local weight = getEmptyTrainWeight(train);
+		if weight < 500000 then
+			pullingForce = weight * 0.010
 		else
-			game.print('train FUEL');
+			pullingForce = weight * 0.005
+		end
+	end
+	
+	if isTrainDebugLogged(train) then
+		if isTrainActuallyCargoShipInstead(train) then
+			game.print('ship FUEL');
+		else
+			if isTrainActuallyPoweredElectrically(train) then
+				game.print('train ELEC');
+			else
+				game.print('train FUEL');
+			end
 		end
 	end
 	
@@ -190,8 +222,9 @@ function getTrainFrictionForce(train)
 	local totalFriction = 0.0;
 	
 	if isTrainActuallyCargoShipInstead(train) then
-		local dragFriction  = global.settings.trainWheelfrictionCoefficient  * (25 + absTrainSpeed);
-		local waterFriction = global.settings.shipWaterfrictionCoefficient   * math_pow2(absTrainSpeed);
+		local mass = getTrainMass(train);
+		local dragFriction  = global.settings.trainWheelfrictionCoefficient * (25 + absTrainSpeed) * (mass / 100.0 / 1000.0);
+		local waterFriction = 0.0 -- global.settings.shipWaterfrictionCoefficient  *  math_pow2(absTrainSpeed);
 		
 		totalFriction = dragFriction + waterFriction;
 	else
@@ -206,18 +239,13 @@ function getTrainFrictionForce(train)
 end
 
 
-function isTrainDebugLogged(train)
-	return false -- train.id == 1232
-end
-
-
 
 function getTrainForce(train)
 	local pullingForce  = getTrainPullingForce(train);		
 	local totalFriction = getTrainFrictionForce(train);
 
 	if isTrainDebugLogged(train) then
-		game.print('train pulling: ' .. string.format("%.2f", pullingForce));
+		game.print('train pulling: '  .. string.format("%.2f", pullingForce));
 		game.print('train friction: ' .. string.format("%.2f", totalFriction));
 	end
 
@@ -226,7 +254,7 @@ end
 
 
 
-function adjustTrainAccleration(train)
+function adjustTrainAcceleration(train)
 	local currSpeed = getTrainSpeed(train);
 	if not global.trainId2speed[train.id] then
 		global.trainId2speed[train.id] = currSpeed;
@@ -265,11 +293,16 @@ function adjustTrainAccleration(train)
 		setTrainSpeed(train, currSpeed);
 	end
 	
-	if isTrainDebugLogged(train) then	
+	if isTrainDebugLogged(train) then
+		for idx, wagon in ipairs(train.cargo_wagons) do
+			game.print('name=' .. wagon.name);
+		end
+	
 		game.print('train ' .. train.id .. ' acceleration: change=' .. didChange .. ' -> '
-		   .. string.format("%.2f", acceleration*GAME_FRAMERATE) .. '/'
-		   .. string.format("%.2f", maxAcceleration*GAME_FRAMERATE) .. '/'
-		   .. string.format("%.2f", origAcceleration*GAME_FRAMERATE)
+		   .. ' mass='  .. string.format("%.2f", trainMass)
+		   .. ' cur.acc='  .. string.format("%.2f", acceleration     * GAME_FRAMERATE)
+		   .. ' max.acc='  .. string.format("%.2f", maxAcceleration  * GAME_FRAMERATE)
+		   .. ' orig.acc=' .. string.format("%.2f", origAcceleration * GAME_FRAMERATE)
 		);
 	end
 	
@@ -326,18 +359,22 @@ script.on_event({defines.events.on_tick},
 			refresh_mod_settings();
 		end
 		
-		local discoveryInterval = 120;
-		local measureInterval = 120;
+		local trainDiscoveryInterval = 120;
+		local measureWeightInterval = 120;
+		local measureForceInterval = 30;
 		local adjustInterval = 1;
 		
-		if (e.tick % discoveryInterval == 0) then
+		if (e.tick % trainDiscoveryInterval == 0) then
 			findTrains();
 		end
 		
 		for trainId, train in pairs(global.trainId2train) do
 			if train.valid then
-				if (e.tick % measureInterval == trainId % measureInterval) then
+				if (e.tick % measureWeightInterval == trainId % measureWeightInterval) then
 					global.trainId2mass[trainId]  = getTrainMass(train);
+				end
+				
+				if (e.tick % measureForceInterval == trainId % measureForceInterval) then
 					global.trainId2force[trainId] = getTrainForce(train);
 				end
 			end
@@ -348,7 +385,7 @@ script.on_event({defines.events.on_tick},
 				if (e.tick % adjustInterval == trainId % adjustInterval) then
 					if train.state == defines.train_state.on_the_path
 					or train.state == defines.train_state.manual_control then
-						adjustTrainAccleration(train);
+						adjustTrainAcceleration(train);
 					end
 				end
 			end
