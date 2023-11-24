@@ -29,8 +29,8 @@ local fuel_types = {
 	"nuclear-fuel"
 }
 
-for i, fuel_type in ipairs(fuel_types) do
-	local fuel = data.raw.item[fuel_type]
-	fuel.fuel_acceleration_multiplier = 10
-	fuel.fuel_top_speed_multiplier = 1
-end
+--for i, fuel_type in ipairs(fuel_types) do
+--	local fuel = data.raw.item[fuel_type]
+--	fuel.fuel_acceleration_multiplier = 10
+--	fuel.fuel_top_speed_multiplier = 1
+--end
