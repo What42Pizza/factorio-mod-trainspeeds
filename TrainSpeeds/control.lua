@@ -5,7 +5,7 @@ require 'rivenmods-common-v0-1-1'
 
 function isTrainDebugLogged(train)
 	return false
-	-- return train.id == 454
+	-- return train.id == 21
 end
 
 
@@ -266,26 +266,53 @@ function getTrainForceMultiplier(train)
 	return multiplier;
 end
 
-
-
-function getLocomotiveEngineForceMultiplier(locomotive)
-	local protoname = locomotive.name	
-	if protoname == 'locomotive' then
-		return 1.00 
-	elseif protoname == 'mini-locomotive' then
-		return 0.50
-	elseif protoname == 'bob-locomotive-2' then
-		return 1.50 -- mk2
-	elseif protoname == 'bob-locomotive-3' then
-		return 2.00 -- mk3
-	elseif protoname == 'bob-armoured-locomotive' then
-		return 1.25 -- mk1
-	elseif protoname == 'bob-armoured-locomotive-2' then
-		return 1.50 -- mk2
-	else
-		return 1.00
+function getTrainForceMultiplier2(train)
+	local combinedForce = 0;
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			combinedForce = combinedForce + --
+				locomotive.prototype.max_energy_usage * --
+				locomotive.get_health_ratio()
+		end
 	end
+	return combinedForce;
 end
+
+
+
+function getLocomotiveEngineForceMultiplier(locomotive)	
+	-- energy-usage of 10000 (per tick) means 600kW (60fps x 10000 J)
+	local n = locomotive.prototype.max_energy_usage / 10000
+	
+	-- ships have exactly 3.3333 times too much power
+	if locomotive.name == 'cargo_ship_engine'
+	or locomotive.name == 'boat_engine' then
+		n = n / 3.3333
+	end
+
+	-- make higher power trains disproportionally stronger
+	-- to make up for old ratios
+	return math.pow(n, 1.25)
+end
+
+--function getLocomotiveEngineForceMultiplier(locomotive)
+--	local protoname = locomotive.name	
+--	if protoname == 'locomotive' then
+--		return 1.00 -- 600kW
+--	elseif protoname == 'mini-locomotive' then
+--		return 0.50 -- 313kW
+--	elseif protoname == 'bob-locomotive-2' then
+--		return 1.50 -- 750kW mk2
+--	elseif protoname == 'bob-locomotive-3' then
+--		return 2.00 -- 857kW mk3
+--	elseif protoname == 'bob-armoured-locomotive' then
+--		return 1.25 -- 750kW mk1
+--	elseif protoname == 'bob-armoured-locomotive-2' then
+--		return 1.50 -- 833kW mk2
+--	else
+--		return 1.00
+--	end
+--end
 
 
 
@@ -384,6 +411,7 @@ function getTrainForce(train)
 	if isTrainDebugLogged(train) then
 		game.print('train pulling: '  .. string.format("%.2f", pullingForce));
 		game.print('train friction: ' .. string.format("%.2f", totalFriction));
+		game.print('train power: '    .. string.format("%.2f", getTrainForceMultiplier2(train)));
 	end
 
 	return math.max(0.0, pullingForce - totalFriction);
