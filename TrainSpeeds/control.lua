@@ -2,6 +2,34 @@ require 'rivenmods-common-v0-1-1'
 
 
 
+
+
+
+
+function getCargoWagonCapacity()
+	return game.entity_prototypes['cargo-wagon'].get_inventory_size(defines.inventory.cargo_wagon);
+end
+
+function getFluidWagonCapacity()
+	return game.entity_prototypes['fluid-wagon'].fluid_capacity;
+end
+
+
+
+function getLocomotiveWeight()
+	return game.entity_prototypes['locomotive'].weight;
+end
+
+function getCargoWagonWeight()
+	return game.entity_prototypes['cargo-wagon'].weight;
+end
+
+function getFluidWagonWeight()
+	return game.entity_prototypes['fluid-wagon'].weight;
+end
+
+
+
 function getLocomotiveCount(train)
 	local wagon_count = 0;
 	for direction, locomotives in pairs(train.locomotives) do
@@ -12,8 +40,6 @@ function getLocomotiveCount(train)
 	return wagon_count;
 end
 
-
-
 function getCargoWagonCount(train)
 	local wagon_count = 0;
 	for idx, wagon in ipairs(train.cargo_wagons) do
@@ -21,19 +47,6 @@ function getCargoWagonCount(train)
 	end
 	return wagon_count;
 end
-
-
-
-function getCargoWagonUsageRatio(train)
-	local wagon_stack_count = game.entity_prototypes['cargo-wagon'].get_inventory_size(defines.inventory.cargo_wagon);
-	local train_stack_used = 0.0;
-	for itemName, amount in pairs(train.get_contents()) do
-		train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
-	end
-	return train_stack_used / wagon_stack_count;
-end
-
-
 
 function getFluidWagonCount(train)
 	local wagon_count = 0;
@@ -45,38 +58,66 @@ end
 
 
 
-function getFluidWagonUsageRatio(train)
-	local wagon_stack_count = game.entity_prototypes['fluid-wagon'].fluid_capacity;
+function getTrainCargoStackUsage(train)
+	local train_stack_used = 0.0;
+	for itemName, amount in pairs(train.get_contents()) do
+		train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+	end
+	return train_stack_used;
+end
+
+function getTrainFluidWagonUsage(train)
 	local train_stack_used = 0.0;
 	for itemName, amount in pairs(train.get_fluid_contents()) do
 		train_stack_used = train_stack_used + amount;
 	end
-	return train_stack_used / wagon_stack_count;
+	return train_stack_used;
 end
 
 
 
 function getTrainMass(train)
-	local total = 0.0;
+	local emptyWeight = 0.0;
+	emptyWeight = emptyWeight + getLocomotiveCount(train) * getLocomotiveWeight();
+	emptyWeight = emptyWeight + getCargoWagonCount(train) * getCargoWagonWeight();
+	emptyWeight = emptyWeight + getFluidWagonCount(train) * getFluidWagonWeight();
 	
-	total = total + getLocomotiveCount(train)      * global.settings.locomotiveWeight;
+	local cargoWeight = 0.0;
+	cargoWeight = cargoWeight + getTrainCargoStackUsage(train) * global.settings.cargoStackWeight; -- default 250: 40 stacks  --> 10K kg
+	cargoWeight = cargoWeight + getTrainFluidWagonUsage(train) * global.settings.fluidLiterWeight; -- default 0.4: 25K liters --> 10K kg
 	
-	total = total + getCargoWagonCount(train)      * global.settings.cargoWagonWeight;
-	total = total + getCargoWagonUsageRatio(train) * global.settings.cargoPayloadWeight;
 	
-	total = total + getFluidWagonCount(train)      * global.settings.fluidWagonWeight;
-	total = total + getFluidWagonUsageRatio(train) * global.settings.fluidPayloadWeight;
+	local total = emptyWeight + cargoWeight;	
+	--game.print('--- train id: ' .. train.id);
+	--game.print('train weight: ' .. emptyWeight);
+	--game.print('cargo weight: ' .. getTrainCargoStackUsage(train));
+	--game.print('fluid weight: ' .. getTrainFluidWagonUsage(train));
 	
 	return total;
 end
 
 
 
+function isTrainActuallyCargoShipInstead(train) 
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			if locomotive.name == 'cargo_ship_engine' or locomotive.name == 'boat_engine' then
+				return true
+			end
+		end
+	end
+	
+	return false;
+end
+
+
+
 function getLocomotiveFuelForceMultiplier(train)
-	-- wood: 2M
-	-- coal: 4M
-	-- solid fuel: 12M
-	-- nuclear: 1210M
+	-- wood: 2M            --> 0.30
+	-- coal: 4M            --> 0.60
+	-- solid fuel: 12M     --> 1.08
+	-- rocket fuel: ???    --> ????
+	-- nuclear: 1210M      --> 3.08
 
 	local fuel_value = 0;
 	for direction, locomotives in pairs(train.locomotives) do
@@ -99,12 +140,24 @@ function getTrainForce(train)
 	else
 		pullingForce = global.settings.locomotivePullforce * getLocomotiveCount(train);
 	end
+	--game.print('train pulling: ' .. pullingForce);
 	
-	local trainSpeed    = getTrainSpeed(train);
-	local vehicleCount  = getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train);
-	local wheelFriction = global.settings.trainWheelfrictionCoefficient * trainSpeed * vehicleCount;
-	local airFriction   = global.settings.trainAirfrictionCoefficient   * math_pow2(trainSpeed);
-	local totalFriction = wheelFriction + airFriction;
+	local trainSpeed = getTrainSpeed(train);
+	
+	local totalFriction = 0.0;
+	if isTrainActuallyCargoShipInstead(train) then
+		local dragFriction  = global.settings.trainWheelfrictionCoefficient  * (25 + trainSpeed);
+		local waterFriction = global.settings.shipWaterfrictionCoefficient   * math_pow2(trainSpeed);
+		
+		totalFriction = dragFriction + waterFriction;
+	else
+		local vehicleCount  = getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train);
+		local wheelFriction = global.settings.trainWheelfrictionCoefficient * trainSpeed * vehicleCount;
+		local airFriction   = global.settings.trainAirfrictionCoefficient   * math_pow2(trainSpeed);
+		
+		totalFriction = wheelFriction + airFriction;
+	end
+	--game.print('train friction: ' .. totalFriction);
 
 	return math.max(0.0, pullingForce - totalFriction);
 end
@@ -189,12 +242,10 @@ function refresh_mod_settings()
 	global.settings = {
 		fuelTypeBasedAcceleration = settings.global["modtrainspeeds-fuel-type-based-acceleration"].value,
 		locomotivePullforce = settings.global["modtrainspeeds-locomotive-pullforce"].value,
-		locomotiveWeight = settings.global["modtrainspeeds-locomotive-weight"].value,
-		cargoWagonWeight = settings.global["modtrainspeeds-cargo-wagon-weight"].value,
-		cargoPayloadWeight = settings.global["modtrainspeeds-cargo-payload-weight"].value,
-		fluidWagonWeight = settings.global["modtrainspeeds-fluid-wagon-weight"].value,
-		fluidPayloadWeight = settings.global["modtrainspeeds-fluid-payload-weight"].value,
+		cargoStackWeight = settings.global["modtrainspeeds-cargo-stack-weight"].value,
+		fluidLiterWeight = settings.global["modtrainspeeds-fluid-liter-weight"].value,
 		trainAirfrictionCoefficient = settings.global["modtrainspeeds-train-airfriction-coefficient"].value,
+		shipWaterfrictionCoefficient = settings.global["modtrainspeeds-ship-waterfriction-coefficient"].value,
 		trainWheelfrictionCoefficient = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value
 	}
 end
@@ -209,6 +260,12 @@ script.on_event({defines.events.on_tick},
 		local discoveryInterval = 120;
 		local smokeInterval = 10;
 		local adjustInterval = 1;
+		
+		--for a, b in pairs(game.entity_prototypes) do
+		--	if string.find(a, "boat") then
+		--		game.print('log: ' .. a);
+		--	end
+		--end
 		
 		if (e.tick % discoveryInterval == 0) then
 			findTrains();

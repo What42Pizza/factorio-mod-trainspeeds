@@ -17,54 +17,24 @@ data:extend
 		minimum_value = 1000,
 		maximum_value = 10000
 	},
-	{
-		type = "double-setting",
-		name = "modtrainspeeds-locomotive-weight",
-		order = "102",
-		setting_type = "runtime-global",
-		default_value = 12500,
-		minimum_value = 1000,
-		maximum_value = 100000
-	},
-	
 	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-cargo-wagon-weight",
+		name = "modtrainspeeds-cargo-stack-weight",
 		order = "201",
 		setting_type = "runtime-global",
-		default_value = 5000,
-		minimum_value = 1000,
-		maximum_value = 100000
-	},
+		default_value = 250,
+		minimum_value = 10,
+		maximum_value = 1000
+	},	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-cargo-payload-weight",
+		name = "modtrainspeeds-fluid-liter-weight",
 		order = "202",
 		setting_type = "runtime-global",
-		default_value = 15000,
-		minimum_value = 1000,
-		maximum_value = 100000
-	},
-	
-	
-	{
-		type = "double-setting",
-		name = "modtrainspeeds-fluid-wagon-weight",
-		order = "301",
-		setting_type = "runtime-global",
-		default_value = 5000,
-		minimum_value = 1000,
-		maximum_value = 100000
-	},
-	{
-		type = "double-setting",
-		name = "modtrainspeeds-fluid-payload-weight",
-		order = "302",
-		setting_type = "runtime-global",
-		default_value = 15000,
-		minimum_value = 1000,
-		maximum_value = 100000
+		default_value = 0.4,
+		minimum_value = 0.1,
+		maximum_value = 10.0
 	},
 	
 	
@@ -85,5 +55,14 @@ data:extend
 		default_value = 0.25,
 		minimum_value = 0.0,
 		maximum_value = 1.0
-	}
+	},
+	{
+		type = "double-setting",
+		name = "modtrainspeeds-ship-waterfriction-coefficient",
+		order = "403",
+		setting_type = "runtime-global",
+		default_value = 1000.0,
+		minimum_value = 0.0,
+		maximum_value = 100000.0
+	},
 }
