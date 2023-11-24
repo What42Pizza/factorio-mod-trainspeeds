@@ -67,9 +67,13 @@ function getTrainFuelStackUsage(train)
 	local train_stack_used = 0.0;
 	for direction, locomotives in pairs(train.locomotives) do
 		for idx, locomotive in ipairs(locomotives) do
-			if locomotive.get_fuel_inventory() ~= nil then -- mod: space elevator
-				for itemName, amount in pairs(locomotive.get_fuel_inventory().get_contents()) do
-					train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+			local fuel_inventory = locomotive.get_fuel_inventory()
+			if fuel_inventory ~= nil then -- mod: space elevator
+				local fuel_contents = fuel_inventory.get_contents()
+				if fuel_contents ~= nil then -- mod: space elevator
+					for itemName, amount in pairs(fuel_contents) do
+						train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+					end
 				end
 			end
 		end
@@ -85,7 +89,7 @@ function getTrainCargoStackUsage(train)
 			local composition = getIntermodalContainerItemCompositionCached(itemName)			
 			if composition ~= nil then
 				stackSize = game.item_prototypes[composition.name].stack_size
-				stackSize = stackSize * 2 -- one of the mods halves the stacksize, compensate
+				stackSize = stackSize * 2 -- the IntermodalContainers mod halves the stacksize, compensate
 				train_stack_used = train_stack_used + amount * composition.amount / stackSize
 			else
 				train_stack_used = train_stack_used + amount / stackSize
@@ -293,10 +297,12 @@ function getLocomotiveFuelForceMultiplier(locomotive)
 	-- nuclear: 1210M      --> 3.08
 
 	local fuel_value = 0;
-	local burning_item = locomotive.burner.currently_burning
-	if burning_item ~= nil then
-		local burn_value = math.log(burning_item.fuel_value / 1000000) / math.log(10)
-		fuel_value = fuel_value + burn_value
+	if locomotive.burner ~= nil then -- mod: space elevator
+		local burning_item = locomotive.burner.currently_burning
+		if burning_item ~= nil then
+			local burn_value = math.log(burning_item.fuel_value / 1000000) / math.log(10)
+			fuel_value = fuel_value + burn_value
+		end
 	end
 	return math.min(fuel_value, 4.00) -- to work around mods with insane fuel-values
 end
@@ -439,12 +445,6 @@ function adjustTrainAcceleration(train)
 	
 	global.trainId2speed[train.id] = getTrainSpeed(train);
 end
-
--- no air friction, no wheel friction, no acceleration-change
--- stop 1: 63km/h, stop 2: 86km/h, stop 3: 103km/h
-
--- WITH air friction, WITH wheel friction, WITH acceleration-change
--- stop 1: 58km/h, stop 2: 79km/h, stop 3: 94km/h, stop 4: 104km/h
 
 
 function ensure_mod_context()
