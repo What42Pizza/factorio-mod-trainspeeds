@@ -78,15 +78,18 @@ end
 function getTrainCargoStackUsage(train)
 	local train_stack_used = 0.0;
 	for itemName, amount in pairs(train.get_contents()) do
-		if game.active_mods['FreightForwarding'] then
+		local stackSize = game.item_prototypes[itemName].stack_size
+		if game.active_mods['IntermodalContainers'] then
 			local composition = getIntermodalContainerItemCompositionCached(itemName)			
 			if composition ~= nil then
-				train_stack_used = train_stack_used + amount * composition.amount / game.item_prototypes[composition.name].stack_size
+				stackSize = game.item_prototypes[composition.name].stack_size
+				stackSize = stackSize * 2 -- one of the mods halves the stacksize, compensate
+				train_stack_used = train_stack_used + amount * composition.amount / stackSize
 			else
-				train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size
+				train_stack_used = train_stack_used + amount / stackSize
 			end			
 		else
-			train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size
+			train_stack_used = train_stack_used + amount / stackSize
 		end
 	end
 	return train_stack_used;
@@ -125,9 +128,9 @@ function getIntermodalContainerItemComposition(itemName)
 end
 
 function getIntermodalContainerItemCompositionCached(itemName)
-	--if global.container2ingredient[itemName] ~= nil then
-	--	return global.container2ingredient[itemName]
-	--end
+	if global.container2ingredient[itemName] ~= nil then
+		return global.container2ingredient[itemName]
+	end
 	
 	global.container2ingredient[itemName] = getIntermodalContainerItemComposition(itemName)
 	return global.container2ingredient[itemName]
