@@ -236,9 +236,11 @@ end
 
 
 function getLocomotiveEngineForceMultiplier(locomotive)
-	local protoname = locomotive.name
+	local protoname = locomotive.name	
 	if protoname == 'locomotive' then
-		return 1.00
+		return 1.00 
+	elseif protoname == 'mini-locomotive' then
+		return 0.50
 	elseif protoname == 'bob-locomotive-2' then
 		return 1.50 -- mk2
 	elseif protoname == 'bob-locomotive-3' then
