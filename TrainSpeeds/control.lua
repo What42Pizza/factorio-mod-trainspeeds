@@ -66,6 +66,74 @@ end
 
 
 
+
+
+
+
+
+
+
+
+
+function getLocomotiveCount(train)
+	local wagon_count = 0;
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			wagon_count = wagon_count + 1;
+		end
+	end
+	return wagon_count;
+end
+
+
+function getCargoWagonCount(train)
+	local wagon_count = 0;
+	for idx, wagon in ipairs(train.cargo_wagons) do
+		wagon_count = wagon_count + 1;
+	end
+	return wagon_count;
+end
+
+
+function getCargoWagonUsageRatio(train)
+	local wagon_stack_count = 40;	
+	local train_stack_used = 0.0;
+	for itemName, amount in pairs(train.get_contents()) do
+		train_stack_used = train_stack_used + amount / game.item_prototypes[itemName].stack_size;
+	end
+	return train_stack_used / wagon_stack_count;
+end
+
+
+
+function getFluidWagonCount(train)
+	local wagon_count = 0;
+	for idx, wagon in ipairs(train.fluid_wagons) do
+		wagon_count = wagon_count + 1;
+	end
+	return wagon_count;
+end
+
+
+function getFluidWagonUsageRatio(train)
+	local wagon_stack_count = 25000;	
+	local train_stack_used = 0.0;
+	for itemName, amount in pairs(train.get_fluid_contents()) do
+		train_stack_used = train_stack_used + amount;
+	end
+	return train_stack_used / wagon_stack_count;
+end
+
+
+
+
+
+
+
+
+
+
+
 trainId2train = {}
 trainId2speed = {}
 trainId2mass = {}
@@ -89,31 +157,13 @@ end
 function getTrainMass(train)
 	local total = 0.0;
 	
-	for direction, locomotives in pairs(train.locomotives) do
-		for idx, locomotive in ipairs(locomotives) do
-			total = total + 12500;
-		end
-	end
+	total = total + getLocomotiveCount(train) * 12500.0;
 	
+	total = total + getCargoWagonCount(train) * 10000.0;
+	total = total + getCargoWagonUsageRatio(train) * 10000.0;
 	
-	
-	for idx, wagon in ipairs(train.cargo_wagons) do
-		total = total + 10000;
-	end
-	
-	for itemName, amount in pairs(train.get_contents()) do
-		total = total + amount * 4;
-	end
-	
-	
-	
-	for idx, wagon in ipairs(train.fluid_wagons) do
-		total = total + 5000;
-	end
-	
-	for itemName, amount in pairs(train.get_fluid_contents()) do
-		total = total + amount * 0.1;
-	end
+	total = total + getFluidWagonCount(train) * 5000.0;
+	total = total + getFluidWagonUsageRatio(train) * 15000.0;
 	
 	return total;
 end
@@ -123,14 +173,11 @@ end
 function getTrainForce(train)
 	local total = 0.0;
 	
-	for direction, locomotives in pairs(train.locomotives) do
-		for idx, locomotive in ipairs(locomotives) do
-			total = total + 2500;
-		end
-	end
+	total = total + getLocomotiveCount(train) * 2500.0;
+	
 	
 	-- air friction impacts only first locomotive
-	total = total - 1250;
+	total = total - 750.0;
 	
 	return total;
 end
