@@ -74,7 +74,7 @@ data:extend
 		name = "modtrainspeeds-train-wheelfriction-coefficient",
 		order = "402",
 		setting_type = "runtime-global",
-		default_value = 0.5,
+		default_value = 0.25,
 		minimum_value = 0.0,
 		maximum_value = 1.0
 	}

@@ -1,27 +1,4 @@
-local GAME_FRAMERATE = 60.0;
-
-function math_sign(x)
-   if x < 0 then
-     return -1
-   elseif x > 0 then
-     return 1
-   else
-     return 0
-   end
-end
-
-function math_pow2(x)
-	return x * x
-end
-
-
-function getTrainSpeed(train)
-	return train.speed * GAME_FRAMERATE * 3.6;
-end
-
-function setTrainSpeed(train, speed)
-	train.speed = speed / GAME_FRAMERATE / 3.6;
-end
+require 'rivenmods-common-v0-1-0'
 
 
 
@@ -79,46 +56,16 @@ end
 
 
 
-function findTrains()
-	global.modtrainspeeds.trainId2train = {}
-	for _idx1_, surface in pairs(game.surfaces) do
-		for _idx2_, train in pairs(surface.get_trains()) do
-			global.modtrainspeeds.trainId2train[train.id] = train;
-			global.modtrainspeeds.trainId2mass[train.id]  = getTrainMass(train);
-			global.modtrainspeeds.trainId2force[train.id] = getTrainForce(train);
-		end
-	end
-end
-
-
-
-function ensure_mod_context() 
-	if not global.modtrainspeeds then
-		global.modtrainspeeds = {}
-		global.modtrainspeeds.trainId2train = {}
-		global.modtrainspeeds.trainId2mass = {}
-		global.modtrainspeeds.trainId2force = {}
-		global.modtrainspeeds.trainId2speed = {}
-	end
-	
-	if not global.modtrainspeeds.rndm then
-		global.modtrainspeeds.rndm = game.create_random_generator()
-		global.modtrainspeeds.rndm.re_seed(1337);
-	end
-end
-
-
-
 function getTrainMass(train)
 	local total = 0.0;
 	
-	total = total + getLocomotiveCount(train)      * settings.global["modtrainspeeds-locomotive-weight"].value;
+	total = total + getLocomotiveCount(train)      * global.settings.locomotiveWeight;
 	
-	total = total + getCargoWagonCount(train)      * settings.global["modtrainspeeds-cargo-wagon-weight"].value;
-	total = total + getCargoWagonUsageRatio(train) * settings.global["modtrainspeeds-cargo-payload-weight"].value;
+	total = total + getCargoWagonCount(train)      * global.settings.cargoWagonWeight;
+	total = total + getCargoWagonUsageRatio(train) * global.settings.cargoPayloadWeight;
 	
-	total = total + getFluidWagonCount(train)      * settings.global["modtrainspeeds-fluid-wagon-weight"].value;
-	total = total + getFluidWagonUsageRatio(train) * settings.global["modtrainspeeds-fluid-payload-weight"].value;
+	total = total + getFluidWagonCount(train)      * global.settings.fluidWagonWeight;
+	total = total + getFluidWagonUsageRatio(train) * global.settings.fluidPayloadWeight;
 	
 	return total;
 end
@@ -128,12 +75,12 @@ end
 function getTrainForce(train)
 	local trainSpeed    = getTrainSpeed(train);
 
-	local pullingForce  = settings.global["modtrainspeeds-locomotive-pullforce"].value * getLocomotiveCount(train);
+	local pullingForce  = global.settings.locomotivePullforce * getLocomotiveCount(train);
 	local totalForce    = pullingForce;
 	
 	local vehicleCount  = getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train);
-	local wheelFriction = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value * trainSpeed * vehicleCount;
-	local airFriction   = settings.global["modtrainspeeds-train-airfriction-coefficient"].value   * math_pow2(trainSpeed);
+	local wheelFriction = global.settings.trainWheelfrictionCoefficient * trainSpeed * vehicleCount;
+	local airFriction   = global.settings.trainAirfrictionCoefficient   * math_pow2(trainSpeed);
 	local totalFriction = wheelFriction + airFriction;
 
 	return math.max(0.0, totalForce - totalFriction);
@@ -143,17 +90,17 @@ end
 
 function adjustTrainAccleration(train)
 	local currSpeed = getTrainSpeed(train);
-	if not global.modtrainspeeds.trainId2speed[train.id] then
-		global.modtrainspeeds.trainId2speed[train.id] = currSpeed;
+	if not global.trainId2speed[train.id] then
+		global.trainId2speed[train.id] = currSpeed;
 		return
 	end
 	
-	local prevSpeed = global.modtrainspeeds.trainId2speed[train.id];
+	local prevSpeed = global.trainId2speed[train.id];
 	local acceleration = (currSpeed - prevSpeed) * GAME_FRAMERATE;
 	local didChange = 0;
 	
-	local trainForce = global.modtrainspeeds.trainId2force[train.id];
-	local trainMass  = global.modtrainspeeds.trainId2mass[train.id];
+	local trainForce = global.trainId2force[train.id];
+	local trainMass  = global.trainId2mass[train.id];
 	local maxAcceleration = trainForce / trainMass;
 	
 	if currSpeed > 0.1 and acceleration > maxAcceleration then
@@ -170,12 +117,12 @@ function adjustTrainAccleration(train)
 		setTrainSpeed(train, currSpeed);
 	end
 	
-	global.modtrainspeeds.trainId2speed[train.id] = getTrainSpeed(train);
+	global.trainId2speed[train.id] = getTrainSpeed(train);
 end
 
 
 
-function addNiceSmokePuffsWhenDeparting(train, smokeInterval, tickCount)
+function addNiceSmokePuffsWhenDeparting(train)
 	local trainSpeed = math.abs(getTrainSpeed(train));
 	for direction, locomotives in pairs(train.locomotives) do
 		for idx, locomotive in ipairs(locomotives) do
@@ -195,13 +142,70 @@ function addNiceSmokePuffsWhenDeparting(train, smokeInterval, tickCount)
 					modulo = 0.00
 				end
 				
-				if global.modtrainspeeds.rndm() < modulo then
+				if global.rndm() < modulo then
 					locomotive.surface.create_trivial_smoke({name='tank-smoke', position=locomotive.position})
 				end
 			end
 		end
 	end
 end
+
+
+
+function ensure_mod_context() 
+	if not global.hasContext then
+		global.hasContext = true;
+		
+		global.trainId2train = {}
+		global.trainId2mass = {}
+		global.trainId2force = {}
+		global.trainId2speed = {}
+	end
+	
+	if not global.rndm then
+		global.rndm = game.create_random_generator()
+		global.rndm.re_seed(1337);
+	end
+	
+	if not global.settings then
+		refresh_mod_settings();
+	end
+end
+
+
+
+function refresh_mod_settings()
+	game.print('trainspeeds.refresh_mod_settings');
+	global.settings = {}
+	global.settings.locomotivePullforce = settings.global["modtrainspeeds-locomotive-pullforce"].value;
+	global.settings.locomotiveWeight = settings.global["modtrainspeeds-locomotive-weight"].value;
+	global.settings.cargoWagonWeight = settings.global["modtrainspeeds-cargo-wagon-weight"].value;
+	global.settings.cargoPayloadWeight = settings.global["modtrainspeeds-cargo-payload-weight"].value;
+	global.settings.fluidWagonWeight = settings.global["modtrainspeeds-fluid-wagon-weight"].value;
+	global.settings.fluidPayloadWeight = settings.global["modtrainspeeds-fluid-payload-weight"].value;
+	global.settings.trainAirfrictionCoefficient = settings.global["modtrainspeeds-train-airfriction-coefficient"].value;
+	global.settings.trainWheelfrictionCoefficient = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value;
+	
+	game.print('trainspeeds.trainWheelfrictionCoefficient: ' .. global.settings.trainWheelfrictionCoefficient);
+end
+
+
+ 
+script.on_event({defines.events.on_init},
+	function (e) 
+		refresh_mod_settings();
+	end
+)
+script.on_event({defines.events.on_load},
+	function (e) 
+		refresh_mod_settings();
+	end
+)
+script.on_event({defines.events.on_runtime_mod_setting_changed},
+	function (e) 
+		refresh_mod_settings();
+	end
+)
 
 
 
@@ -216,19 +220,19 @@ script.on_event({defines.events.on_tick},
 		if (e.tick % discoveryInterval == 0) then
 			findTrains();
 			
-			for trainId, train in pairs(global.modtrainspeeds.trainId2train) do
+			for trainId, train in pairs(global.trainId2train) do
 				if train.valid then
-					global.modtrainspeeds.trainId2mass[trainId]  = getTrainMass(train);
-					global.modtrainspeeds.trainId2force[trainId] = getTrainForce(train);
+					global.trainId2mass[trainId]  = getTrainMass(train);
+					global.trainId2force[trainId] = getTrainForce(train);
 				end
 			end
 		end
 		
-		for trainId, train in pairs(global.modtrainspeeds.trainId2train) do
+		for trainId, train in pairs(global.trainId2train) do
 			if train.valid then
 				if train.state == defines.train_state.on_the_path or train.state == defines.train_state.manual_control then
 					if (e.tick % smokeInterval == trainId % smokeInterval) then
-						addNiceSmokePuffsWhenDeparting(train, smokeInterval, e.tick);
+						addNiceSmokePuffsWhenDeparting(train);
 					end
 					
 					if (e.tick % adjustInterval == trainId % adjustInterval) then					
