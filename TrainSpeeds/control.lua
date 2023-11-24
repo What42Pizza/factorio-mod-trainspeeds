@@ -118,6 +118,10 @@ function isTrainActuallyPoweredElectrically(train)
 			if locomotive.prototype.name == 'bet-locomotive' then
 				return true
 			end
+			
+			if locomotive.prototype.name:find('ret-modular-locomotive') ~= 0 then
+				return true
+			end
 		end
 	end
 	
@@ -253,8 +257,8 @@ function adjustTrainAccleration(train)
 		setTrainSpeed(train, currSpeed);
 	end
 	
-	if isTrainDebugLogged(train) then
-		game.print('train acceleration: change=' .. didChange .. ' -> '
+	if isTrainDebugLogged(train) then	
+		game.print('train ' .. x .. ' acceleration: change=' .. didChange .. ' -> '
 		   .. string.format("%.2f", acceleration*GAME_FRAMERATE) .. '/'
 		   .. string.format("%.2f", maxAcceleration*GAME_FRAMERATE) .. '/'
 		   .. string.format("%.2f", origAcceleration*GAME_FRAMERATE)
@@ -320,8 +324,7 @@ script.on_event({defines.events.on_tick},
 				if (e.tick % adjustInterval == trainId % adjustInterval) then
 					if train.state == defines.train_state.on_the_path
 					or train.state == defines.train_state.manual_control then
-					
-						-- adjustTrainAccleration(train);
+						adjustTrainAccleration(train);
 					end
 				end
 			end
