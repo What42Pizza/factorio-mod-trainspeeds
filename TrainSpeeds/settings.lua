@@ -25,7 +25,7 @@ data:extend
 		name = "modtrainspeeds-cargo-wagon-weight",
 		order = "201",
 		setting_type = "runtime-global",
-		default_value = 10000,
+		default_value = 5000,
 		minimum_value = 1000,
 		maximum_value = 100000
 	},
@@ -34,7 +34,7 @@ data:extend
 		name = "modtrainspeeds-cargo-payload-weight",
 		order = "202",
 		setting_type = "runtime-global",
-		default_value = 10000,
+		default_value = 15000,
 		minimum_value = 1000,
 		maximum_value = 100000
 	},
