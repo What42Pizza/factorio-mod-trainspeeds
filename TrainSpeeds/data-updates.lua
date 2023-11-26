@@ -1,13 +1,13 @@
-for _, loco in pairs(data.raw["locomotive"]) do
-	loco.braking_force = 10.00 -- Base: 10
-end
+--for _, loco in pairs(data.raw["locomotive"]) do
+--	loco.braking_force = 10.00 -- Base: 10
+--end
 
 
 
 local train_types = {
-	"locomotive",
-	"fluid-wagon",
-	"cargo-wagon"
+	"locomotive" -- ,
+	-- "fluid-wagon",
+	-- "cargo-wagon"
 }
 
 

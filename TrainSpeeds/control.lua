@@ -339,7 +339,7 @@ end
 function getTrainPullingForce(train)
 	local absTrainSpeed = math.abs(getTrainSpeed(train));
 	
-	local pullingForce = global.settings.locomotivePullforce;
+	local pullingForce = global.settings.locomotivePullforce  * 0.5;
 	
 	if isTrainActuallyPoweredElectrically(train) then
 		-- low speed, high torque
@@ -350,7 +350,7 @@ function getTrainPullingForce(train)
 		pullingForce = pullingForce * ((forceMultiplier - 1.0) + lowSpeedBonus);
 	elseif isTrainActuallyCargoShipInstead(train) then
 		local weight = getEmptyTrainWeight(train);
-		if weight < 500000 then
+		if weight < 50000 then
 			pullingForce = weight * 0.010
 		else
 			pullingForce = weight * 0.020
@@ -418,6 +418,16 @@ function getTrainForce(train)
 end
 
 
+function getTrainBrakingDistance(speed, maxDeceleration)
+	local minBrakingDistance = 0
+	local nextSpeed = speed
+	while nextSpeed > 0 do
+		minBrakingDistance = minBrakingDistance + nextSpeed
+		nextSpeed = nextSpeed - maxDeceleration
+	end
+	return minBrakingDistance
+end
+
 
 function adjustTrainAcceleration(train)
 	local currSpeed = getTrainSpeed(train);
@@ -425,11 +435,6 @@ function adjustTrainAcceleration(train)
 		global.trainId2speed[train.id] = currSpeed;
 		return
 	end
-	
-	local prevSpeed = global.trainId2speed[train.id];
-	local acceleration = (currSpeed - prevSpeed) * GAME_FRAMERATE;
-	local origAcceleration = acceleration;
-	local didChange = 0;
 	
 	if global.trainId2force[train.id] == nil then
 		global.trainId2force[train.id] = getTrainForce(train);
@@ -439,8 +444,19 @@ function adjustTrainAcceleration(train)
 		global.trainId2mass[train.id] = getTrainMass(train);
 	end
 	
+	local currSpeedSign = math_sign(currSpeed);	
+	local prevSpeed = global.trainId2speed[train.id];
 	
-	local trainForce = global.trainId2force[train.id];
+	if currSpeedSign == -1 then
+		currSpeed = currSpeed * currSpeedSign
+		prevSpeed = prevSpeed * currSpeedSign
+	end
+	
+	local acceleration = (currSpeed - prevSpeed) / 3.6 * GAME_FRAMERATE;
+	local origAcceleration = acceleration;
+	local didChange = 0;
+	
+	local trainForce = global.trainId2force[train.id] * 20.0;
 	local trainMass  = global.trainId2mass[train.id];	
 	local maxAcceleration = trainForce / trainMass;
 	
@@ -448,14 +464,29 @@ function adjustTrainAcceleration(train)
 		acceleration = maxAcceleration;
 		didChange = 1;
 	end
-	if currSpeed < -0.1 and acceleration < -maxAcceleration then
-		acceleration = -maxAcceleration;
-		didChange = 1;
+	
+	if train.has_path and currSpeed > 0.1 then
+		local brakeForce = 	15000.0 * getLocomotiveCount(train) +
+		                     2000.0 * getCargoWagonCount(train) +
+							 2000.0 * getFluidWagonCount(train);
+		local maxDeceleration = brakeForce / trainMass;
+		local remainingDistance = train.path.total_distance - train.path.travelled_distance
+		local minBrakingDistance = getTrainBrakingDistance(math.min(currSpeed, prevSpeed) / 3.6, maxDeceleration)		
+		if minBrakingDistance > remainingDistance then
+			acceleration = math.min(acceleration, -maxDeceleration)
+			didChange = 1
+		end
 	end
 	
 	if didChange == 1 then
-		currSpeed = prevSpeed + acceleration;
-		setTrainSpeed(train, currSpeed);
+		currSpeed = prevSpeed + acceleration * 3.6 / GAME_FRAMERATE;
+		setTrainSpeed(train, currSpeed * currSpeedSign);
+	end
+	
+	if currSpeed > 0.01 and acceleration == maxAcceleration then
+		renderTrainPuff(train, 0.2)
+	elseif acceleration > 0.01 then
+		renderTrainPuff(train, 0.1)
 	end
 	
 	if isTrainDebugLogged(train) then
@@ -464,14 +495,53 @@ function adjustTrainAcceleration(train)
 		end
 	
 		game.print('train ' .. train.id .. ' acceleration: change=' .. didChange .. ' -> '
-		   .. ' mass='  .. string.format("%.2f", trainMass)
-		   .. ' cur.acc='  .. string.format("%.2f", acceleration     * GAME_FRAMERATE)
-		   .. ' max.acc='  .. string.format("%.2f", maxAcceleration  * GAME_FRAMERATE)
-		   .. ' orig.acc=' .. string.format("%.2f", origAcceleration * GAME_FRAMERATE)
+		   .. ' mass='      .. string.format("%.2f", trainMass)
+		   .. ' cur.acc='   .. string.format("%.2f", acceleration     * GAME_FRAMERATE)
+		   .. ' max.acc='   .. string.format("%.2f", maxAcceleration  * GAME_FRAMERATE)
+		   .. ' orig.acc='  .. string.format("%.2f", origAcceleration * GAME_FRAMERATE)
 		);
 	end
 	
 	global.trainId2speed[train.id] = getTrainSpeed(train);
+end
+
+function renderTrainPuff(train, rndmThreshold)
+	for direction, locomotives in pairs(train.locomotives) do
+		for idx, locomotive in ipairs(locomotives) do
+			if global.rndm() < rndmThreshold then
+				renderLocomotivePuff(locomotive)
+			end
+		end
+	end
+end
+
+function renderLocomotivePuff(locomotive)
+	if locomotive.prototype.name ~= 'locomotive' then
+		return
+	end
+
+
+	locomotive.surface.create_trivial_smoke({
+		name='train-smoke',
+		position={
+			x=locomotive.position.x,
+			y=locomotive.position.y - 1.5 - global.rndm()
+		}
+	})
+	
+	if global.rndm() < 0.1 then
+		locomotive.surface.create_particle({
+			name='spark-particle-debris',
+			position=locomotive.position,
+			movement={
+				x=(global.rndm()*2-1)*0.05,
+				y=(global.rndm()*2-1)*0.05
+			},
+			height=1,
+			vertical_speed=0.05,
+			frame_speed=1
+		})
+	end
 end
 
 
@@ -545,7 +615,9 @@ script.on_event({defines.events.on_tick},
 			if train.valid then
 				if (e.tick % adjustInterval == trainId % adjustInterval) then
 					if train.state == defines.train_state.on_the_path
-					or train.state == defines.train_state.manual_control then
+					or train.state == defines.train_state.manual_control
+					or train.state == defines.train_state.arrive_station
+					or train.state == defines.train_state.arrive_signal then
 						adjustTrainAcceleration(train);
 					end
 				end
