@@ -419,13 +419,13 @@ end
 
 
 function getTrainBrakingDistance(speed, maxDeceleration)
-	local minBrakingDistance = 0
-	local nextSpeed = speed
-	while nextSpeed > 0 do
-		minBrakingDistance = minBrakingDistance + nextSpeed
-		nextSpeed = nextSpeed - maxDeceleration
-	end
-	return minBrakingDistance
+	return speed * speed / maxDeceleration * 0.5
+end
+
+function getTrainBrakingForce(train)
+	return 20000.0 * getLocomotiveCount(train) +
+			1000.0 * getCargoWagonCount(train) +
+			1000.0 * getFluidWagonCount(train);
 end
 
 
@@ -436,12 +436,16 @@ function adjustTrainAcceleration(train)
 		return
 	end
 	
-	if global.trainId2force[train.id] == nil then
-		global.trainId2force[train.id] = getTrainForce(train);
+	if global.trainId2accelForce[train.id] == nil then
+		global.trainId2accelForce[train.id] = getTrainForce(train);
 	end
 	
 	if global.trainId2mass[train.id] == nil then
 		global.trainId2mass[train.id] = getTrainMass(train);
+	end
+	
+	if global.trainId2brakeForce[train.id] == nil then
+		global.trainId2brakeForce[train.id] = getTrainBrakingForce(train);
 	end
 	
 	local currSpeedSign = math_sign(currSpeed);	
@@ -456,7 +460,7 @@ function adjustTrainAcceleration(train)
 	local origAcceleration = acceleration;
 	local didChange = 0;
 	
-	local trainForce = global.trainId2force[train.id] * 20.0;
+	local trainForce = global.trainId2accelForce[train.id] * 20.0;
 	local trainMass  = global.trainId2mass[train.id];	
 	local maxAcceleration = trainForce / trainMass;
 	
@@ -466,10 +470,7 @@ function adjustTrainAcceleration(train)
 	end
 	
 	if train.has_path and currSpeed > 0.1 then
-		local brakeForce = 	15000.0 * getLocomotiveCount(train) +
-		                     2000.0 * getCargoWagonCount(train) +
-							 2000.0 * getFluidWagonCount(train);
-		local maxDeceleration = brakeForce / trainMass;
+		local maxDeceleration = global.trainId2brakeForce[train.id] / trainMass;
 		local remainingDistance = train.path.total_distance - train.path.travelled_distance
 		local minBrakingDistance = getTrainBrakingDistance(math.min(currSpeed, prevSpeed) / 3.6, maxDeceleration)		
 		if minBrakingDistance > remainingDistance then
@@ -549,7 +550,8 @@ function ensure_mod_context()
 	ensure_global_rndm()
 	ensure_global_mapping('trainId2train')
 	ensure_global_mapping('trainId2mass')
-	ensure_global_mapping('trainId2force')
+	ensure_global_mapping('trainId2brakeForce')
+	ensure_global_mapping('trainId2accelForce')
 	ensure_global_mapping('trainId2speed')
 	ensure_global_mapping('container2ingredient')
 end
@@ -600,13 +602,14 @@ script.on_event({defines.events.on_tick},
 		end
 		
 		for trainId, train in pairs(global.trainId2train) do
-			if train.valid then			
+			if train.valid then
 				if (e.tick % measureWeightInterval == trainId % measureWeightInterval) then
 					global.trainId2mass[trainId]  = getTrainMass(train);
 				end
 				
 				if (e.tick % measureForceInterval == trainId % measureForceInterval) then
-					global.trainId2force[trainId] = getTrainForce(train);
+					global.trainId2accelForce[train.id] = getTrainForce(train);
+					global.trainId2brakeForce[train.id] = getTrainBrakingForce(train);
 				end
 			end
 		end
