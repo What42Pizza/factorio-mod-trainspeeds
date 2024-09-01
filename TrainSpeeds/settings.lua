@@ -2,7 +2,7 @@ data:extend
 {
 	{
 		type = "bool-setting",
-		name = "modtrainspeeds-fuel-type-based-acceleration",
+		name = "riven-acceleration-customized-fuel-type-based-acceleration",
 		order = "100",
 		setting_type = "runtime-global",
 		default_value = true
@@ -10,17 +10,37 @@ data:extend
 	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-locomotive-pullforce",
+		name = "riven-acceleration-customized-locomotive-pullforce",
 		order = "101",
 		setting_type = "runtime-global",
 		default_value = 2500,
 		minimum_value = 1000,
-		maximum_value = 10000
+		maximum_value = 1000000
 	},
 	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-cargo-stack-weight",
+		name = "riven-acceleration-customized-locomotive-braking-force",
+		order = "102",
+		setting_type = "runtime-global",
+		default_value = 20000,
+		minimum_value = 1000,
+		maximum_value = 1000000
+	},
+	
+	{
+		type = "double-setting",
+		name = "riven-acceleration-customized-wagon-braking-force",
+		order = "103",
+		setting_type = "runtime-global",
+		default_value = 1000,
+		minimum_value = 0,
+		maximum_value = 1000000
+	},
+	
+	{
+		type = "double-setting",
+		name = "riven-acceleration-customized-cargo-stack-weight",
 		order = "201",
 		setting_type = "runtime-global",
 		default_value = 250,
@@ -29,7 +49,7 @@ data:extend
 	},	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-fluid-liter-weight",
+		name = "riven-acceleration-customized-fluid-liter-weight",
 		order = "202",
 		setting_type = "runtime-global",
 		default_value = 0.4,
@@ -37,11 +57,19 @@ data:extend
 		maximum_value = 10.0
 	},
 	
-	
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-train-airfriction-coefficient",
+		name = "riven-acceleration-customized-train-airfriction-coefficient",
 		order = "401",
+		setting_type = "runtime-global",
+		default_value = 0.05,
+		minimum_value = 0.0,
+		maximum_value = 1.0
+	},
+	{
+		type = "double-setting",
+		name = "riven-acceleration-customized-train-wheelfriction-coefficient",
+		order = "402",
 		setting_type = "runtime-global",
 		default_value = 0.1,
 		minimum_value = 0.0,
@@ -49,16 +77,7 @@ data:extend
 	},
 	{
 		type = "double-setting",
-		name = "modtrainspeeds-train-wheelfriction-coefficient",
-		order = "402",
-		setting_type = "runtime-global",
-		default_value = 0.25,
-		minimum_value = 0.0,
-		maximum_value = 1.0
-	},
-	{
-		type = "double-setting",
-		name = "modtrainspeeds-ship-waterfriction-coefficient",
+		name = "riven-acceleration-customized-ship-waterfriction-coefficient",
 		order = "403",
 		setting_type = "runtime-global",
 		default_value = 1000.0,

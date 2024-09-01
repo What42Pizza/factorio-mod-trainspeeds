@@ -114,22 +114,15 @@ end
 
 
 
-
-
-
-
-
-
-
-
 function findTrains()
-	global.trainId2train = {}
-	for _idx1_, surface in pairs(game.surfaces) do
-		for _idx2_, train in pairs(surface.get_trains()) do
-			global.trainId2train[train.id] = train;
+	global.allTrains = {}
+	for _, surface in pairs(game.surfaces) do
+		for _, train in pairs(surface.get_trains()) do
+			global.allTrains[train.id] = train;
 		end
 	end
 end
+
 
 
 function getTrainSpeed(train)
@@ -144,4 +137,39 @@ function setTrainSpeed(train, speed)
 		speed = 0.0
 	end
 	train.speed = speed / GAME_FRAMERATE / 3.6;
+end
+
+function getTrainBrakingDistance(speed, maxDeceleration)
+	return speed * speed / maxDeceleration * 0.5
+end
+
+
+
+function isTrainCargoShip(train)
+	for direction, locomotives in pairs(train.locomotives) do
+		for _, locomotive in ipairs(locomotives) do
+			if
+				locomotive.name == 'cargo_ship_engine'
+				or locomotive.name == 'boat_engine'
+			then
+				return true
+			end
+		end
+	end
+	
+	return false
+end
+
+function isTrainElectrical(train)
+	for direction, locomotives in pairs(train.locomotives) do
+		for _, locomotive in ipairs(locomotives) do
+			if locomotive.prototype.name == 'bet-locomotive' then
+				return true
+			end
+			if locomotive.prototype.name:find('ret-modular-locomotive') ~= nil then
+				return true
+			end
+		end
+	end
+	return false
 end

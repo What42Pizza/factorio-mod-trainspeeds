@@ -20,11 +20,10 @@ for _, train_type in ipairs(train_types) do
 		and prototype_name ~= 'oil_tanker'
 	 -- and prototype_name ~= 'boat'		
 		then
-			item_prototype.weight = 10 * item_prototype.weight
+			item_prototype.weight = item_prototype.weight * 10
 		end
 	end
 end
-
 
 
 
