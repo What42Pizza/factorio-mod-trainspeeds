@@ -544,15 +544,15 @@ end
 function on_load(e)
 	
 	global.settings = {
-		fuelTypeBasedAcceleration     = settings.global["riven-acceleration-customized-fuel-type-based-acceleration"].value,
-		locomotivePullforce           = settings.global["riven-acceleration-customized-locomotive-pullforce"].value,
-		cargoStackWeight              = settings.global["riven-acceleration-customized-cargo-stack-weight"].value,
-		fluidLiterWeight              = settings.global["riven-acceleration-customized-fluid-liter-weight"].value,
-		trainAirfrictionCoefficient   = settings.global["riven-acceleration-customized-train-airfriction-coefficient"].value,
-		shipWaterfrictionCoefficient  = settings.global["riven-acceleration-customized-ship-waterfriction-coefficient"].value,
-		trainWheelfrictionCoefficient = settings.global["riven-acceleration-customized-train-wheelfriction-coefficient"].value,
-		locomotiveBrakingForce        = settings.global["riven-acceleration-customized-locomotive-braking-force"].value,
-		wagonBrakingForce             = settings.global["riven-acceleration-customized-wagon-braking-force"].value
+		fuelTypeBasedAcceleration     = settings.global["riven-acceleration-fuel-type-based-acceleration"].value,
+		locomotivePullforce           = settings.global["riven-acceleration-locomotive-pullforce"].value,
+		cargoStackWeight              = settings.global["riven-acceleration-cargo-stack-weight"].value,
+		fluidLiterWeight              = settings.global["riven-acceleration-fluid-liter-weight"].value,
+		trainAirfrictionCoefficient   = settings.global["riven-acceleration-train-airfriction-coefficient"].value,
+		shipWaterfrictionCoefficient  = settings.global["riven-acceleration-ship-waterfriction-coefficient"].value,
+		trainWheelfrictionCoefficient = settings.global["riven-acceleration-train-wheelfriction-coefficient"].value,
+		locomotiveBrakingForce        = settings.global["riven-acceleration-locomotive-braking-force"].value,
+		wagonBrakingForce             = settings.global["riven-acceleration-wagon-braking-force"].value
 	}
 	
 	global.allTrains = {}
