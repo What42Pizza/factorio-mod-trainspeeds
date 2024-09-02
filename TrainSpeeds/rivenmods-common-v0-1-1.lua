@@ -3,17 +3,15 @@ IS_VERBOSE = false
 
 
 
-function ensure_global_mapping(key)
-	if not global[key] then
-		global[key] = {}
+function ensure_rng_created()
+	if not rng then
+		rng = game.create_random_generator()
+		rng.re_seed(1337);
 	end
 end
 
-function ensure_global_rndm()
-	if not global.rndm then
-		global.rndm = game.create_random_generator()
-		global.rndm.re_seed(1337);
-	end
+function random()
+	return rng()
 end
 
 function map_value_equals(map, key, value)
@@ -115,10 +113,10 @@ end
 
 
 function findTrains()
-	global.allTrains = {}
+	allTrains = {}
 	for _, surface in pairs(game.surfaces) do
 		for _, train in pairs(surface.get_trains()) do
-			global.allTrains[train.id] = train;
+			allTrains[train.id] = train;
 		end
 	end
 end

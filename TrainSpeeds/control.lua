@@ -45,23 +45,21 @@ end
 
 
 
-
-
 function getEmptyTrainWeight(train)
 	local weight = 0
 	
 	for direction, locomotives in pairs(train.locomotives) do
 		for _, locomotive in ipairs(locomotives) do
-			weight = weight + game.entity_prototypes[locomotive.name].weight
+			weight = weight + game.entity_prototypes[locomotive.name].weight * mod_settings.wagonWeightMult
 		end
 	end
 	
 	for _, wagon in ipairs(train.cargo_wagons) do
-		weight = weight + game.entity_prototypes[wagon.name].weight
+		weight = weight + game.entity_prototypes[wagon.name].weight * mod_settings.wagonWeightMult
 	end
 
 	for _, wagon in ipairs(train.fluid_wagons) do
-		weight = weight + game.entity_prototypes[wagon.name].weight
+		weight = weight + game.entity_prototypes[wagon.name].weight * mod_settings.wagonWeightMult
 	end
 	
 	return weight
@@ -140,27 +138,27 @@ function getIntermodalContainerItemComposition(itemName)
 end
 
 function getIntermodalContainerItemCompositionCached(itemName)
-	if global.container2ingredient[itemName] ~= nil then
-		return global.container2ingredient[itemName]
+	if container2ingredient[itemName] ~= nil then
+		return container2ingredient[itemName]
 	end
-	global.container2ingredient[itemName] = getIntermodalContainerItemComposition(itemName)
-	return global.container2ingredient[itemName]
+	container2ingredient[itemName] = getIntermodalContainerItemComposition(itemName)
+	return container2ingredient[itemName]
 end
 
 
 remote.add_interface("train-speeds", {
 	printTrainMass = function(trainId)
-		if global.allTrains[trainId] == nil or global.allTrains[trainId].valid == false then
+		if allTrains[trainId] == nil or allTrains[trainId].valid == false then
 			game.print('Train #' .. trainId .. ' not found.')
 			return
 		end
 		
-		local train = global.allTrains[trainId]
+		local train = allTrains[trainId]
 		
 		local emptyWeight = getEmptyTrainWeight(train)
-		local fuelWeight  = getTrainFuelStackUsage(train)  * global.settings.cargoStackWeight
-		local cargoWeight = getTrainCargoStackUsage(train) * global.settings.cargoStackWeight
-		local fluidWeight = getTrainFluidWagonUsage(train) * global.settings.fluidLiterWeight
+		local fuelWeight  = getTrainFuelStackUsage(train)  * mod_settings.cargoStackWeight
+		local cargoWeight = getTrainCargoStackUsage(train) * mod_settings.cargoStackWeight
+		local fluidWeight = getTrainFluidWagonUsage(train) * mod_settings.fluidLiterWeight
 		
 		local totalWeight = emptyWeight + fuelWeight + cargoWeight + fluidWeight
 		local totalWeightDisplay = tonumber(string.format("%.1f", totalWeight / 1000))
@@ -181,9 +179,9 @@ function getTrainMass(train)
 	local emptyWeight = getEmptyTrainWeight(train)
 	
 	local cargoWeight = 0.0
-	cargoWeight = cargoWeight + getTrainFuelStackUsage(train)  * global.settings.cargoStackWeight -- default 250: 3 stacks  --> 750 kg
-	cargoWeight = cargoWeight + getTrainCargoStackUsage(train) * global.settings.cargoStackWeight -- default 250: 40 stacks  --> 10K kg
-	cargoWeight = cargoWeight + getTrainFluidWagonUsage(train) * global.settings.fluidLiterWeight -- default 0.4: 25K liters --> 10K kg
+	cargoWeight = cargoWeight + getTrainFuelStackUsage(train)  * mod_settings.cargoStackWeight -- default 250: 3 stacks  --> 750 kg
+	cargoWeight = cargoWeight + getTrainCargoStackUsage(train) * mod_settings.cargoStackWeight -- default 250: 40 stacks  --> 10K kg
+	cargoWeight = cargoWeight + getTrainFluidWagonUsage(train) * mod_settings.fluidLiterWeight -- default 0.4: 25K liters --> 10K kg
 	
 	if isTrainDebugLogged(train) then
 		game.print('train weight: empty='  .. emptyWeight .. ', cargo=' .. cargoWeight)
@@ -314,9 +312,9 @@ end
 function getTrainPullingForce(train)
 	local absTrainSpeed = math.abs(getTrainSpeed(train))
 	
-	local pullingForce = global.settings.locomotivePullforce * 0.5
+	local pullingForce = mod_settings.locomotivePullforce * 0.5
 	
-	if global.settings.fuelTypeBasedAcceleration then
+	if mod_settings.fuelTypeBasedAcceleration then
 		pullingForce = pullingForce * getTrainForceMultiplier(train)
 	else
 		pullingForce = pullingForce * getLocomotiveCount(train)
@@ -362,13 +360,13 @@ function getTrainFrictionForce(train)
 	
 	if isTrainCargoShip(train) then
 		local mass = getTrainMass(train)
-		local dragFriction  = global.settings.trainWheelfrictionCoefficient * (25 + absTrainSpeed) * (mass / 100.0 / 1000.0)
-		local waterFriction = 0.0 -- global.settings.shipWaterfrictionCoefficient  *  math_pow2(absTrainSpeed)
+		local dragFriction  = mod_settings.trainWheelfrictionCoefficient * (25 + absTrainSpeed) * (mass / 100.0 / 1000.0)
+		local waterFriction = 0.0 -- settings.shipWaterfrictionCoefficient  *  math_pow2(absTrainSpeed)
 		totalFriction = dragFriction + waterFriction
 	else
 		local vehicleCount  = getLocomotiveCount(train) + getCargoWagonCount(train) + getFluidWagonCount(train)
-		local wheelFriction = global.settings.trainWheelfrictionCoefficient * absTrainSpeed * vehicleCount
-		local airFriction   = global.settings.trainAirfrictionCoefficient   * math_pow2(absTrainSpeed)
+		local wheelFriction = mod_settings.trainWheelfrictionCoefficient * absTrainSpeed * vehicleCount
+		local airFriction   = mod_settings.trainAirfrictionCoefficient   * math_pow2(absTrainSpeed)
 		totalFriction = wheelFriction + airFriction
 	end
 	
@@ -394,8 +392,8 @@ end
 
 function getTrainBrakingForce(train)
 	return
-		global.settings.locomotiveBrakingForce * getLocomotiveCount(train)
-		+ global.settings.wagonBrakingForce * (getCargoWagonCount(train) + getFluidWagonCount(train))
+		mod_settings.locomotiveBrakingForce * getLocomotiveCount(train)
+		+ mod_settings.wagonBrakingForce * (getCargoWagonCount(train) + getFluidWagonCount(train))
 end
 
 
@@ -403,22 +401,22 @@ end
 function adjustTrainAcceleration(train)
 	local currSpeed = getTrainSpeed(train)
 	
-	if not global.allTrainSpeeds[train.id] then
-		global.allTrainSpeeds[train.id] = currSpeed
+	if not allTrainSpeeds[train.id] then
+		allTrainSpeeds[train.id] = currSpeed
 		return
 	end
-	if global.allTrainTotalForces[train.id] == nil then
-		global.allTrainTotalForces[train.id] = getTrainForce(train)
+	if allTrainTotalForces[train.id] == nil then
+		allTrainTotalForces[train.id] = getTrainForce(train)
 	end
-	if global.allTrainMasses[train.id] == nil then
-		global.allTrainMasses[train.id] = getTrainMass(train)
+	if allTrainMasses[train.id] == nil then
+		allTrainMasses[train.id] = getTrainMass(train)
 	end
-	if global.allTrainBrakingForces[train.id] == nil then
-		global.allTrainBrakingForces[train.id] = getTrainBrakingForce(train)
+	if allTrainBrakingForces[train.id] == nil then
+		allTrainBrakingForces[train.id] = getTrainBrakingForce(train)
 	end
 	
 	local currSpeedSign = math_sign(currSpeed)
-	local prevSpeed = global.allTrainSpeeds[train.id]
+	local prevSpeed = allTrainSpeeds[train.id]
 	if currSpeedSign == -1 then
 		currSpeed = currSpeed * currSpeedSign
 		prevSpeed = prevSpeed * currSpeedSign
@@ -428,8 +426,8 @@ function adjustTrainAcceleration(train)
 	local origAcceleration = acceleration
 	local didChange = 0
 	
-	local trainForce = global.allTrainTotalForces[train.id] * 20.0
-	local trainMass  = global.allTrainMasses[train.id]
+	local trainForce = allTrainTotalForces[train.id] * 20.0
+	local trainMass  = allTrainMasses[train.id]
 	local maxAcceleration = trainForce / trainMass
 	
 	if currSpeed > 0.1 and acceleration > 0.001 then
@@ -438,7 +436,7 @@ function adjustTrainAcceleration(train)
 	end
 	
 	if train.has_path and currSpeed > 0.1 then
-		local maxDeceleration = global.allTrainBrakingForces[train.id] / trainMass
+		local maxDeceleration = allTrainBrakingForces[train.id] / trainMass
 		local remainingDistance = train.path.total_distance - train.path.travelled_distance
 		local minBrakingDistance = getTrainBrakingDistance(math.min(currSpeed, prevSpeed) / 3.6, maxDeceleration)
 		if remainingDistance < minBrakingDistance then
@@ -471,7 +469,7 @@ function adjustTrainAcceleration(train)
 		)
 	end
 	
-	global.allTrainSpeeds[train.id] = getTrainSpeed(train)
+	allTrainSpeeds[train.id] = getTrainSpeed(train)
 end
 
 
@@ -479,7 +477,7 @@ end
 function renderTrainPuff(train, rndmThreshold)
 	for direction, locomotives in pairs(train.locomotives) do
 		for _, locomotive in ipairs(locomotives) do
-			if global.rndm() < rndmThreshold then
+			if random() < rndmThreshold then
 				renderLocomotivePuff(locomotive)
 			end
 		end
@@ -495,7 +493,7 @@ function renderLocomotivePuff(locomotive)
 		name='train-smoke',
 		position={
 			x=locomotive.position.x,
-			y=locomotive.position.y - 1.5 - global.rndm()
+			y=locomotive.position.y - 1.5 - random()
 		}
 	})
 	
@@ -503,8 +501,8 @@ function renderLocomotivePuff(locomotive)
 		name='spark-particle-debris',
 		position=locomotive.position,
 		movement={
-			x=(global.rndm()*2-1)*0.05,
-			y=(global.rndm()*2-1)*0.05
+			x=(random()*2-1)*0.05,
+			y=(random()*2-1)*0.05
 		},
 		height=1,
 		vertical_speed=0.05,
@@ -518,12 +516,12 @@ end
 function updateTrain(e, train, trainId)
 	
 	if (e.tick % measureWeightInterval == trainId % measureWeightInterval) then
-		global.allTrainMasses[trainId]  = getTrainMass(train)
+		allTrainMasses[trainId]  = getTrainMass(train)
 	end
 	
 	if (e.tick % measureForceInterval == trainId % measureForceInterval) then
-		global.allTrainTotalForces[train.id] = getTrainForce(train)
-		global.allTrainBrakingForces[train.id] = getTrainBrakingForce(train)
+		allTrainTotalForces[train.id] = getTrainForce(train)
+		allTrainBrakingForces[train.id] = getTrainBrakingForce(train)
 	end
 	
 	if e.tick % adjustInterval == trainId % adjustInterval then
@@ -543,24 +541,25 @@ end
 
 function on_load(e)
 	
-	global.settings = {
-		fuelTypeBasedAcceleration     = settings.global["riven-acceleration-fuel-type-based-acceleration"].value,
-		locomotivePullforce           = settings.global["riven-acceleration-locomotive-pullforce"].value,
-		cargoStackWeight              = settings.global["riven-acceleration-cargo-stack-weight"].value,
-		fluidLiterWeight              = settings.global["riven-acceleration-fluid-liter-weight"].value,
-		trainAirfrictionCoefficient   = settings.global["riven-acceleration-train-airfriction-coefficient"].value,
-		shipWaterfrictionCoefficient  = settings.global["riven-acceleration-ship-waterfriction-coefficient"].value,
-		trainWheelfrictionCoefficient = settings.global["riven-acceleration-train-wheelfriction-coefficient"].value,
-		locomotiveBrakingForce        = settings.global["riven-acceleration-locomotive-braking-force"].value,
-		wagonBrakingForce             = settings.global["riven-acceleration-wagon-braking-force"].value
+	mod_settings = {
+		fuelTypeBasedAcceleration     = settings.global["modtrainspeeds-fuel-type-based-acceleration"].value,
+		locomotivePullforce           = settings.global["modtrainspeeds-locomotive-pullforce"].value,
+		locomotiveBrakingForce        = settings.global["modtrainspeeds-locomotive-braking-force"].value,
+		wagonBrakingForce             = settings.global["modtrainspeeds-wagon-braking-force"].value,
+		wagonWeightMult               = settings.global["modtrainspeeds-wagon-weight-mult"].value,
+		cargoStackWeight              = settings.global["modtrainspeeds-cargo-stack-weight"].value,
+		fluidLiterWeight              = settings.global["modtrainspeeds-fluid-liter-weight"].value,
+		trainAirfrictionCoefficient   = settings.global["modtrainspeeds-train-airfriction-coefficient"].value,
+		shipWaterfrictionCoefficient  = settings.global["modtrainspeeds-ship-waterfriction-coefficient"].value,
+		trainWheelfrictionCoefficient = settings.global["modtrainspeeds-train-wheelfriction-coefficient"].value,
 	}
 	
-	global.allTrains = {}
-	global.allTrainMasses = {}
-	global.allTrainBrakingForces = {}
-	global.allTrainTotalForces = {}
-	global.allTrainSpeeds = {}
-	global.container2ingredient = {}
+	allTrains = {}
+	allTrainMasses = {}
+	allTrainBrakingForces = {}
+	allTrainTotalForces = {}
+	allTrainSpeeds = {}
+	container2ingredient = {}
 	
 end
 
@@ -571,17 +570,17 @@ script.on_load(on_load)
 
 script.on_event({defines.events.on_tick},
 	function(e)
-		ensure_global_rndm()
+		ensure_rng_created()
 		
 		if e.tick % trainDiscoveryInterval == 0 then
 			findTrains()
 		end
 		
-		for trainId, train in pairs(global.allTrains) do
+		for trainId, train in pairs(allTrains) do
 			if train.valid then
 				updateTrain(e, train, trainId)
 			else
-				global.allTrains[trainId] = nil
+				allTrains[trainId] = nil
 			end
 		end
 		
