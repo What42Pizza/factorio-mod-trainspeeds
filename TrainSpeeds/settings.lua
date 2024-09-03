@@ -1,11 +1,13 @@
 data:extend
 {
 	{
-		type = "bool-setting",
-		name = "modtrainspeeds-fuel-type-based-acceleration",
+		type = "double-setting",
+		name = "modtrainspeeds-fuel-bonus-mult",
 		order = "100",
 		setting_type = "runtime-global",
-		default_value = true
+		default_value = 1,
+		minimum_value = 0,
+		maximum_value = 10
 	},
 	
 	{

@@ -234,7 +234,7 @@ function getTrainForceMultiplier(train)
 				locomotive.get_health_ratio()
 		end
 	end
-	return multiplier
+	return (multiplier - 1) * mod_settings.fuelBonusMult + 1
 end
 
 function getTrainForceMultiplier2(train)
@@ -314,11 +314,7 @@ function getTrainPullingForce(train)
 	
 	local pullingForce = mod_settings.locomotivePullforce * 0.5
 	
-	if mod_settings.fuelTypeBasedAcceleration then
-		pullingForce = pullingForce * getTrainForceMultiplier(train)
-	else
-		pullingForce = pullingForce * getLocomotiveCount(train)
-	end
+	pullingForce = pullingForce * getTrainForceMultiplier(train)
 	
 	if isTrainElectrical(train) then
 		-- low speed, high torque
@@ -542,7 +538,7 @@ end
 function on_load(e)
 	
 	mod_settings = {
-		fuelTypeBasedAcceleration     = settings.global["modtrainspeeds-fuel-type-based-acceleration"].value,
+		fuelBonusMult                 = settings.global["modtrainspeeds-fuel-bonus-mult"].value,
 		locomotivePullforce           = settings.global["modtrainspeeds-locomotive-pullforce"].value,
 		locomotiveBrakingForce        = settings.global["modtrainspeeds-locomotive-braking-force"].value,
 		wagonBrakingForce             = settings.global["modtrainspeeds-wagon-braking-force"].value,
