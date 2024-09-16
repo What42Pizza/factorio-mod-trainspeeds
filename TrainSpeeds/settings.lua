@@ -27,7 +27,7 @@ data:extend
 		setting_type = "runtime-global",
 		default_value = 20000,
 		minimum_value = 1000,
-		maximum_value = 1000000
+		maximum_value = 10000000
 	},
 	
 	{
@@ -37,7 +37,7 @@ data:extend
 		setting_type = "runtime-global",
 		default_value = 1000,
 		minimum_value = 0,
-		maximum_value = 1000000
+		maximum_value = 10000000
 	},
 	
 	{
